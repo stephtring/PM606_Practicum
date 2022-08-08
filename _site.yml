@@ -1,0 +1,13 @@
+
+name: "CTS Mortality Risk Prediction Project"
+output_dir: ","
+navbar:
+  title: "CTS Mortality Risk Prediction Project"
+  left:
+    - text: "Home"
+      href: index.html
+output:
+  html_document:
+    theme: cosmo
+
+

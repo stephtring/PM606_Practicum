@@ -1,0 +1,1307 @@
+---
+title: "CTS Mortality Risk Prediction Project"
+author: "Stephanie Tring"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo=TRUE,
+  warning=FALSE,
+  eval=TRUE,
+  cache=FALSE,
+  error=FALSE,
+  message=FALSE)
+```
+
+
+# Introduction
+
+In this study a research study conducted by the USC Public Health Data Science Department, OSHPD hospitalization records from the California Teachers Study (CTS) were analyzed. The data from the CTS study contains extensive hospital recording and survey data on 48324 participants spanning from 2011-2018.
+
+The primary objective of this project are:
+1. Develop a prediction model to predict short-term risk of death based on prior in-patient hospitalization records from this CTS study.
+
+2. Assess whether time window after hospitalliation plays a role in predicting risk of death.
+
+3. Identify whether certain co-morbidities contributes to predicting the risk of death.
+
+4. To determine whether there are any temporal(seasonal) or spatial (zip code) correlation with hospitalization-related deaths.
+
+# Methods
+
+1. To analyze the data, the initial dataset will be assess under exploratory data analysis methods (EDA). Under EDA, the data will be explored based on key factors such as dimension of the dataset to asses number of participants and number of variables as well as understanding the main aim the study, which is the variable deceased.
+
+2. Preprocessing of the data. The dataset will be preprocessed to clean/manage to perform downstream analysis. This includes removing of duplicates and any other dataset that would skew or create inaccurate analysis.
+
+3. Data Analysis of specific aims. The dataset will be categorized and parsed to study the main objectives such as timepoints of time to deceased of participants, co-morbidities in relations to deceased and time to deceased, length of stay in hospital in relation to deceased. Basic visualization and statistical pearson's correlation analysis will be performed on these topics. 
+
+4. Prediction model will be created to predict risk to death based on hospitalization records as well as specific variables as listed above. Random Forest model will be used to predict overall risk of death as well as predict risk of death based on time to deceased.
+
+5. Spatial significance in relation to death rate will be analyzed. As economic status is highly correlated to zip code, this information will be assessed over temporal data to check whether there is a spatial relationship with rate of death as this may also infer socioeconimic status relationship with mortality rate. 
+
+
+
+# EDA
+
+Loading data
+
+
+```{r read in data, echo=FALSE, warning=FALSE, message= FALSE}
+
+library(dplyr)
+
+params <- c("S:/Researcher Projects/Self Service Analysis Projects/10017_USCDAT/2022/Stephanie Tring/",
+            "O:/Datasets/10017_USCDAT/v01/10017_USCDAT_v01_20210609_2220_formats.csv",
+            "O:/Datasets/10017_USCDAT/v01/10017_USCDAT_v01_20210609_2220_analytic_data.csv",
+            "O:/Datasets/10017_USCDAT/uscdat_oshpd_formats.csv",
+            "O:/Datasets/10017_USCDAT/uscdat_oshpd_2022.csv")
+
+
+setwd(params[1])
+
+# reading in data types for survey data
+data_types_file <- read.csv(file = params[2],  
+                            na.strings = "",                    
+                            colClasses = "character")  
+
+# reading in data types for hospitalization data
+oshpd_data_types_file <- read.csv(file = params[4],  
+                                  na.strings = "",                    
+                                  colClasses = "character")  
+
+# creating a named character vector to use in assigning character and Date types for survey data
+data_types <- data_types_file[, 2]             
+names(data_types) <- data_types_file[, 1]  
+data_types <- data_types[data_types=="character" | data_types=="Date"]     
+
+# creating a named character vector to use in assigning Date types for hospitalization data
+oshpd_data_types <- oshpd_data_types_file[, 2]             
+names(oshpd_data_types) <- oshpd_data_types_file[, 1]  
+oshpd_data_types <- oshpd_data_types[oshpd_data_types=="Date"] 
+
+# reading in survey data and assigning data types
+analytic_data <- read.csv(file = params[3],
+                          na.strings = "",
+                          colClasses = data_types)
+
+# reading in hospitalization data file 
+oshpd_data <- read.csv(file = params[5], 
+                       na.strings = "")
+
+# converting date fields
+oshpd_data[names(oshpd_data_types)] <- lapply(oshpd_data[names(oshpd_data_types)], as.Date, "%m/%d/%Y")
+
+# dropping columns that already exist in analytic_data
+oshpd_data[c("date_of_birth_dt", "date_of_death_dt", "cause_of_death_cde", "cause_of_death_dsc", 
+             "qnr_1_fill_dt", "qnr_2_fill_dt", "ses_quartile_ind", "first_moveout_ca_dt")] <- list(NULL)
+
+# joining survey data and hospitalization data on participant_key
+combined_data <- inner_join(analytic_data, oshpd_data) # n = 154315
+
+# counting unique participants in the data
+length(unique(combined_data$participant_key)) # n = 48324
+```
+
+There are 48324 participants in this study.
+
+```{r length frequency of data, echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(kableExtra)
+#checking how many participants and how many variables
+#dim(combined_data)
+
+#find the % of death among participants and convert to factor for analysis
+combined_data%>%
+  count(deceased)
+
+# remove duplicate data
+workingdata <- combined_data %>%
+  dplyr::distinct(participant_key, .keep_all=TRUE)
+#dim(workingdata)
+
+workingdata%>%
+  count(deceased)%>%
+  kbl(col.names = c("Deceased", "Number of Participants")) %>%
+  kable_styling()
+```
+ This data set has 154315 participants and 164 variables. Of the total participants, 83404 were noted as deceased, however after removing duplicates, the data has 48324 participants and 164 variables with 18474 recorded as deceased and 29850 alive.
+ 
+ 
+## Main Variables Analyses
+
+
+ 
+```{r EDA set timepoints for length of stay, echo=FALSE, warning=FALSE}
+
+
+#look at the basic stats of the participants based on lentgh of stay and set timepoints
+range(workingdata$length_of_stay_day_cnt)
+
+
+#set timepoints for lenght of time after admission/discharge
+workingdata$days_stayed = workingdata$discharge_dt - workingdata$admission_dt
+workingdata$days_stayed <-as.numeric(workingdata$days_stayed)
+
+#summary(daystodeceased)
+
+#remove negative values
+workingdata <- workingdata %>%
+  filter(days_stayed >=0 | days_stayed %in% NA)
+
+#summary(workingdata$days_stayed)
+
+
+
+
+
+```
+
+
+
+
+
+
+```{r EDA set timepoints from discharge, echo=FALSE, warning=FALSE}
+
+#set timepoints for lenght of time after discharge and deceased
+workingdata$daystodeceased_dc = workingdata$date_of_death_dt - workingdata$discharge_dt
+workingdata$daystodeceased_dc <-as.numeric(workingdata$daystodeceased)
+
+#summary(daystodeceased_dc)
+
+#remove negative values
+workingdata <- workingdata %>%
+  filter(daystodeceased_dc >0 | daystodeceased_dc %in% NA)
+
+#summary(workingdata$daystodeceased_dc)
+
+
+```
+
+
+```{r EDA set timepoints setting, echo=FALSE, warning=FALSE}
+
+
+
+#set timepoints for lenght of time after admission/discharge and deceased
+
+
+#30days
+#180days
+#365days or 1yr
+# 365-1825 or 1-5yrs
+# >1825 or >5yrs
+
+workingdata<-
+  workingdata %>%
+  mutate(deceased30days = ifelse(daystodeceased_dc<=30, 1,0),
+         deceased180days = ifelse(daystodeceased_dc >30 & daystodeceased_dc <=180, 1,0),
+         deceased365days = ifelse(daystodeceased_dc >181 & daystodeceased_dc<=365, 1,0),
+         deceased1825days = ifelse(daystodeceased_dc >365 & daystodeceased_dc <=1825, 1,0),
+         deceasedafter1825days = ifelse(daystodeceased_dc>1825, 1,0))
+
+#set timepoints as factors for plotting
+
+workingdata$deceased30days[is.na(workingdata$deceased30days)]<- "2"
+workingdata$deceased30days <- factor(workingdata$deceased30days,
+                                     levels= c(0,1,2),
+                                     labels= c("No","Deceased","Alive"))
+workingdata$deceased180days[is.na(workingdata$deceased180days)]<- "2"
+workingdata$deceased180days <- factor(workingdata$deceased180days,
+                                     levels= c(0,1,2),
+                                     labels= c("No","Deceased","Alive"))
+workingdata$deceased365days[is.na(workingdata$deceased365days)]<- "2"
+workingdata$deceased365days <- factor(workingdata$deceased365days,
+                                     levels= c(0,1,2),
+                                     labels= c("No","Deceased", "Alive"))
+workingdata$deceased1825days[is.na(workingdata$deceased1825days)]<- "2"
+workingdata$deceased1825days <- factor(workingdata$deceased1825days,
+                                     levels= c(0,1,2),
+                                     labels= c("No","Deceased","Alive"))
+workingdata$deceasedafter1825days[is.na(workingdata$deceasedafter1825days)]<- "2"
+workingdata$deceasedafter1825days <- factor(workingdata$deceasedafter1825days,
+                                     levels= c(0,1,2),
+                                     labels= c("No","Deceased","Alive"))
+
+  
+
+
+
+
+
+
+```
+
+# Number of Days to Deceased after Discharged
+
+```{r EDA set timepoints plot, echo=FALSE, warning=FALSE}
+
+summary(workingdata$daystodeceased_dc)
+library(ggplot2)
+
+workingdata$deceasedtimepoints <-
+  ifelse(workingdata$daystodeceased_dc <=30, "1mo",
+  ifelse(workingdata$daystodeceased_dc >30 & workingdata$daystodeceased_dc <=180, "1mo to 6mo" ,
+  ifelse(workingdata$daystodeceased_dc >181 & workingdata$daystodeceased_dc<=365, "6mo to 1yr",
+  ifelse(workingdata$daystodeceased_dc >365 & workingdata$daystodeceased_dc <=1825,"1yr to 5yrs", "after 5yrs"))))
+
+
+
+count_tp <- workingdata %>%
+  count(deceasedtimepoints)
+count_tp <- na.omit(count_tp)
+
+count_tp %>%
+  ggplot(aes(x=deceasedtimepoints, y=n, color=deceasedtimepoints)) +
+  geom_bar(stat="identity", fill="white") +
+  labs(title= "Number of Days to Deceased After Discharged") +
+  labs( x= "Number of Days", y= "Number of Participants")
+
+```
+
+Patients had the highest number of mortality after 5years after discharged. As 5 years is a significant amount of time, this may not be related to variables related to the hospitalization data and therefore may not be accurate for predicting risk of death. The second highest is 1 to 5 years. 
+```{r factor deceasedtimepoints, echo=FALSE, warning=FALSE}
+#class(workingdata$deceasedtimepoints)
+#class
+workingdata$deceasedtimepoints <- as.factor(workingdata$deceasedtimepoints)
+#class(workingdata$deceasedtimepoints)
+#factor
+
+```
+
+# Length of Stay
+
+
+
+
+```{r Variables Length of Hospital Stay, echo=FALSE, warning=FALSE}
+
+summary(workingdata$days_stayed)
+library(tidyr)
+range(workingdata$length_of_stay_day_cnt)
+workingdata$staytimepoints <- 
+  ifelse(workingdata$length_of_stay_day_cnt <30, "1mo", 
+  ifelse(workingdata$length_of_stay_day_cnt >=30 & workingdata$length_of_stay_day_cnt <60, "1-2mo",
+  ifelse(workingdata$length_of_stay_day_cnt >=60 & workingdata$length_of_stay_day_cnt <90, "2-3mo",">3mo")))
+
+stay1mo = workingdata[workingdata$staytimepoints == "1mo",];
+stay2mo = workingdata[workingdata$staytimepoints == "1-2mo",];
+stay3mo = workingdata[workingdata$staytimepoints == "2-3mo",];
+stayover3mo = workingdata[workingdata$staytimepoints == ">3mo",]
+
+stay1modec = as.data.frame(table(stay1mo$deceased));stay1modec
+stay2modec = as.data.frame(table(stay2mo$deceased));stay2modec
+stay3modec = as.data.frame(table(stay3mo$deceased));stay3modec
+stayover3modec = as.data.frame(table(stayover3mo$deceased));stayover3modec
+staytable= t(cbind(stay1modec[,2], stay2modec[,2], stay3modec[,2], stayover3modec[,2]))
+staytable= as.data.frame(staytable)
+colnames(staytable)= c("Alive", "Deceased")
+row.names(staytable)= c("1mo", "1-2mo", "2-3mo", ">3mo")
+staydata=(staytable) %>%
+  mutate(ind=factor(row_number())) %>%
+  gather(deceased, proportion, -ind)
+staydata$ind <- factor(staydata$ind,
+                      levels= c(1,2,3,4),
+                      labels= c("1mo", "1-2mo", "2-3mo", ">3mo"))
+
+stayplot=ggplot(staydata, aes(x=ind, y= proportion, fill=deceased)) +
+  geom_col(position="fill", colour= "blue") +
+  scale_y_continuous(labels =scales :: percent) +
+  scale_fill_brewer(palette = "Set3") +
+  ggtitle( "Proportion of Deceased based on Hospital Lenght of Stay") +
+  xlab ("Number of Days in Hospital") + ylab ("Proportion of Participants")
+stayplot
+
+         
+                                     
+  
+
+
+```
+
+The time to deceased ranges from 1 to 6739 days after discharged
+
+```{r Statistics for length of stay, echo=FALSE, warning=FALSE}
+library(tidyverse)
+#library(ggstatsplot)
+
+workingdata$deceased= as.numeric(workingdata$deceased)
+cor.test(workingdata$deceased, workingdata$length_of_stay_day_cnt, method ="pearson")
+
+
+
+
+```
+Based on the visual analysis of lenth of stay in relation to number of deceased, patients staying for 1 to 2 months were among the highest group that are deceased. Based on the Pearson correlation analysis, Length of stay is not signigicantly correlated to number deceased.
+```{r staytimepoints factor, echo=FALSE, warning=FALSE}
+workingdata$staytimepoints <- as.factor(workingdata$staytimepoints)
+#class(workingdata$staytimepoints)
+#factor
+
+```
+
+
+# Age
+
+```{r Variables Age, echo=FALSE, warning=FALSE}
+library(lubridate)
+
+workingdata <-
+  workingdata %>%
+   mutate(agedata=as.numeric(year(date_of_death_dt)-year(date_of_birth_dt)))
+summary(workingdata$agedata)
+
+#workingdata <- workingdata %>%
+ # mutate(agedata = as.numeric(round(workingdata$date_of_death_dt-workingdata$date_of_birth_dt)/365))
+
+workingdata<- workingdata %>%
+  mutate(agedata = ifelse(is.na(workingdata$agedata),     
+                          as.numeric(round((as.Date("2018-12-31")-workingdata$date_of_birth_dt)/365)), workingdata$agedata))
+
+
+workingdata$agedata <- 
+  ifelse(workingdata$agedata <50, "<50", 
+  ifelse(workingdata$agedata >=50 & workingdata$agedata <76, "50-75",
+  ifelse(workingdata$agedata >=76 & workingdata$agedata <90, "76-90",">90")))
+
+workingdata$agedata <- factor(workingdata$agedata, levels = c("<50", "50-75","76-90", ">90"))
+#workingdata$deceased<- factor(workingdata$deceased, levels = c(0, 1))
+
+agetable<- table(workingdata$deceased, workingdata$agedata)
+
+
+kable(head(agetable), format="markdown", digits= 2, row.names = TRUE) 
+
+barplot(prop.table(agetable, 2), xlab= "Age Group", ylab="Deceased Proportion", main= "Deceased by Age",
+        col=c("purple","green"), legen=c("Alive", "Deceased"), args.legend=list(x="topright"))
+
+
+
+
+
+
+
+
+
+
+
+```
+
+
+
+
+```{r Statistics for age, echo=FALSE, warning=FALSE}
+library(tidyverse)
+#library(ggstatsplot)
+workingdata$deceased= as.numeric(workingdata$deceased)
+workingdata$agedata= as.numeric(workingdata$agedata)
+cor.test(workingdata$deceased, workingdata$agedata, method ="pearson")
+
+
+
+
+```
+The age group is 32 to 92 years old. Based on the visualization plot, participants in groups 90 and older are among the highest that have died. Based on the Pearson correlation analysis, there is moderate association between age and death.
+
+# Co-morbidities
+
+```{r view for CCS, echo=FALSE, warning=FALSE}
+
+#view the ccs code diagnosis codes
+#head(workingdata %>% count(diag_ccs_code1, diag_ccs_code2,diag_ccs_code3, diag_ccs_code4, diag_ccs_code5, sort=TRUE, 10))
+
+
+#view the number of patient in each major diagnosis category
+workingdata %>% count(major_diag_cat_cde, sort=TRUE)
+
+
+
+
+
+
+```
+Top 10 most frequent diagnoses are:
+
+8	Other infections; including parasitic
+5	HIV infection
+6	Hepatitis
+13	Cancer of stomach
+0	Undefined
+1	Tuberculosis
+4	Mycoses
+14	Cancer of colon
+9	Sexually transmitted infections (not HIV or hepatitis)
+10	Immunizations and screening for infectious disease
+
+### CCS Among Deceased {.tabset}
+
+```{r view for CCS among deceased, echo=FALSE, warning=FALSE}
+
+
+
+#view diagnosis among deceased
+
+#ccscode1
+ccs1= workingdata %>% filter (workingdata$deceased ==1) %>% select (deceased, diag_ccs_code1, diag_ccs1) %>%
+  group_by(diag_ccs1) %>% summarise(counts=n()) %>% ungroup() %>% arrange(desc(counts))
+head(ccs1,5)
+
+#ccscode2
+ccs2= workingdata %>% filter (workingdata$deceased ==1) %>% select (deceased, diag_ccs_code2, diag_ccs2) %>%
+  group_by(diag_ccs2) %>% summarise(counts=n()) %>% ungroup() %>% arrange(desc(counts))
+head(ccs2,5)
+
+#ccscode3
+ccs3= workingdata %>% filter (workingdata$deceased ==1) %>% select (deceased, diag_ccs_code3, diag_ccs3) %>%
+  group_by(diag_ccs3) %>% summarise(counts=n()) %>% ungroup() %>% arrange(desc(counts))
+head(ccs3,5)
+
+#ccscode4
+ccs4= workingdata %>% filter (workingdata$deceased ==1) %>% select (deceased, diag_ccs_code4, diag_ccs4) %>%
+  group_by(diag_ccs4) %>% summarise(counts=n()) %>% ungroup() %>% arrange(desc(counts))
+head(ccs4,5)
+
+#ccscode5
+ccs5= workingdata %>% filter (workingdata$deceased ==1) %>% select (deceased, diag_ccs_code5, diag_ccs5) %>%
+  group_by(diag_ccs5) %>% summarise(counts=n()) %>% ungroup() %>% arrange(desc(counts))
+head(ccs5,5)
+
+
+
+
+
+```
+
+```{r Statistics for ccs1, echo=FALSE, warning=FALSE}
+
+workingdata$deceased= as.numeric(workingdata$deceased)
+#workingdata$ccs1= as.numeric(workingdata$ccs1)
+cor.test(workingdata$deceased, workingdata$major_diag_cat_cde, method ="pearson")
+
+
+
+
+```
+Among the 5 ccs codes, essential hypertension, cardiac dysrhthmias, disorders of lipid metabolism and osteoarthritis are among the highest diagnoses within patients that have died. Based on the Pearson's correlation analysis, there is a small association between diagnosis based on theses ccs code and death.
+
+### Co-morbidities based on CCS code per timepoint to deceased {.tabset}
+
+#### 1: CCS code 1 {.tabset}
+```{r view for CCS among deceased by ccs1, echo=FALSE, warning=FALSE}
+
+#ccs code1 among deceased in 30 days
+ccs1_30 <-
+  workingdata %>%
+  filter(deceased30days == "Deceased") %>%
+  count(diag_ccs_code1, diag_ccs1, sort=TRUE)
+head(ccs1_30, 5)
+
+#ccs code1 among deceased in 31-180 days
+ccs1_180 <-
+  workingdata %>%
+  filter(deceased180days == "Deceased") %>%
+  count(diag_ccs_code1, diag_ccs1, sort=TRUE)
+head(ccs1_180, 5)
+
+#ccs code1 among deceased in 181-365 days
+ccs1_365 <-
+  workingdata %>%
+  filter(deceased365days == "Deceased") %>%
+  count(diag_ccs_code1, diag_ccs1, sort=TRUE)
+head(ccs1_365, 5)
+
+#ccs code1 among deceased in 366-1825 days
+ccs1_1825 <-
+  workingdata %>%
+  filter(deceased1825days == "Deceased") %>%
+  count(diag_ccs_code1, diag_ccs1, sort=TRUE)
+head(ccs1_1825, 5)
+
+#ccs code1 among deceased in after1825 days
+ccs1after1825 <-
+  workingdata %>%
+  filter(deceasedafter1825days == "Deceased") %>%
+  count(diag_ccs_code1, diag_ccs1, sort=TRUE)
+head(ccs1after1825, 5)
+
+
+
+
+
+
+
+```
+
+
+
+
+#### 2: CCS code 2 {.tabset}
+
+```{r view for CCS among deceased by ccs2, echo=FALSE, warning=FALSE}
+
+#ccs code2 among deceased in 30 days
+ccs2_30 <-
+  workingdata %>%
+  filter(deceased30days == "Deceased") %>%
+  count(diag_ccs_code2, diag_ccs2, sort=TRUE)
+head(ccs2_30, 5)
+
+#ccs code2 among deceased in 31-180 days
+ccs2_180 <-
+  workingdata %>%
+  filter(deceased180days == "Deceased") %>%
+  count(diag_ccs_code2, diag_ccs2, sort=TRUE)
+head(ccs2_180, 5)
+
+#ccs code2 among deceased in 181-365 days
+ccs2_365 <-
+  workingdata %>%
+  filter(deceased365days == "Deceased") %>%
+  count(diag_ccs_code2, diag_ccs2, sort=TRUE)
+head(ccs2_365, 5)
+
+#ccs code2 among deceased in 366-1825 days
+ccs2_1825 <-
+  workingdata %>%
+  filter(deceased1825days == "Deceased") %>%
+  count(diag_ccs_code2, diag_ccs2, sort=TRUE)
+head(ccs2_1825, 5)
+
+#ccs code2 among deceased in after1825 days
+ccs2after1825 <-
+  workingdata %>%
+  filter(deceasedafter1825days == "Deceased") %>%
+  count(diag_ccs_code2, diag_ccs2, sort=TRUE)
+head(ccs2after1825, 5)
+
+```
+
+#### 3: CCS code 3 {.tabset}
+
+```{r view for CCS among deceased by ccs3, echo=FALSE, warning=FALSE}
+
+#ccs code3 among deceased in 30 days
+ccs3_30 <-
+  workingdata %>%
+  filter(deceased30days == "Deceased") %>%
+  count(diag_ccs_code3, diag_ccs3, sort=TRUE)
+head(ccs3_30, 5)
+
+#ccs code3 among deceased in 31-180 days
+ccs3_180 <-
+  workingdata %>%
+  filter(deceased180days == "Deceased") %>%
+  count(diag_ccs_code3, diag_ccs3, sort=TRUE)
+head(ccs3_180, 5)
+
+#ccs code3 among deceased in 181-365 days
+ccs3_365 <-
+  workingdata %>%
+  filter(deceased365days == "Deceased") %>%
+  count(diag_ccs_code3, diag_ccs3, sort=TRUE)
+head(ccs3_365, 5)
+
+#ccs code3 among deceased in 366-1825 days
+ccs3_1825 <-
+  workingdata %>%
+  filter(deceased1825days == "Deceased") %>%
+  count(diag_ccs_code3, diag_ccs3, sort=TRUE)
+head(ccs3_1825, 5)
+
+#ccs code3 among deceased in after1825 days
+ccs3after1825 <-
+  workingdata %>%
+  filter(deceasedafter1825days == "Deceased") %>%
+  count(diag_ccs_code3, diag_ccs3, sort=TRUE)
+head(ccs3after1825, 5)
+
+```
+
+#### 4: CCS code 4 {.tabset}
+
+```{r view for CCS among deceased by ccs4, echo=FALSE, warning=FALSE}
+
+#ccs code4 among deceased in 30 days
+ccs4_30 <-
+  workingdata %>%
+  filter(deceased30days == "Deceased") %>%
+  count(diag_ccs_code4, diag_ccs4, sort=TRUE)
+head(ccs4_30, 5)
+
+#ccs code4 among deceased in 31-180 days
+ccs4_180 <-
+  workingdata %>%
+  filter(deceased180days == "Deceased") %>%
+  count(diag_ccs_code4, diag_ccs4, sort=TRUE)
+head(ccs4_180, 5)
+
+#ccs code4 among deceased in 181-365 days
+ccs4_365 <-
+  workingdata %>%
+  filter(deceased365days == "Deceased") %>%
+  count(diag_ccs_code4, diag_ccs4, sort=TRUE)
+head(ccs4_365, 5)
+
+#ccs code4 among deceased in 366-1825 days
+ccs4_1825 <-
+  workingdata %>%
+  filter(deceased1825days == "Deceased") %>%
+  count(diag_ccs_code4, diag_ccs4, sort=TRUE)
+head(ccs4_1825, 5)
+
+#ccs code3 among deceased in after1825 days
+ccs4after1825 <-
+  workingdata %>%
+  filter(deceasedafter1825days == "Deceased") %>%
+  count(diag_ccs_code4, diag_ccs4, sort=TRUE)
+head(ccs4after1825, 5)
+
+```
+
+#### 5: CCS code 5 {.tabset}
+```{r view for CCS among deceased by ccs5, echo=FALSE, warning=FALSE}
+
+#ccs code5 among deceased in 30 days
+ccs5_30 <-
+  workingdata %>%
+  filter(deceased30days == "Deceased") %>%
+  count(diag_ccs_code5, diag_ccs5, sort=TRUE)
+head(ccs5_30, 5)
+
+#ccs code5 among deceased in 31-180 days
+ccs5_180 <-
+  workingdata %>%
+  filter(deceased180days == "Deceased") %>%
+  count(diag_ccs_code5, diag_ccs5, sort=TRUE)
+head(ccs5_180, 5)
+
+#ccs code5 among deceased in 181-365 days
+ccs5_365 <-
+  workingdata %>%
+  filter(deceased365days == "Deceased") %>%
+  count(diag_ccs_code5, diag_ccs5, sort=TRUE)
+head(ccs5_365, 5)
+
+#ccs code5 among deceased in 366-1825 days
+ccs5_1825 <-
+  workingdata %>%
+  filter(deceased1825days == "Deceased") %>%
+  count(diag_ccs_code5, diag_ccs5, sort=TRUE)
+head(ccs5_1825, 5)
+
+#ccs code5 among deceased in after1825 days
+ccs5after1825 <-
+  workingdata %>%
+  filter(deceasedafter1825days == "Deceased") %>%
+  count(diag_ccs_code5, diag_ccs5, sort=TRUE)
+head(ccs5after1825, 5)
+
+```
+
+
+
+
+```{r view diet data, echo=FALSE, warning=FALSE}
+
+#summary(workingdata$diet_plant)
+
+ # Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+# -2.999  -0.665  -0.067   0.073   0.652   9.889    4686 
+
+#summary(workingdata$diet_highprotfat)
+
+  #Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+# -3.066  -0.670  -0.124   0.026   0.551  12.416    4686 
+
+#summary(workingdata$diet_highcarb)
+
+  #Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+ #-4.379  -0.752  -0.204  -0.072   0.454   7.284    4686
+
+#summary(workingdata$diet_saladwine)
+
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+# -4.579  -0.579   0.041   0.102   0.727   6.268    4686
+
+```
+
+# Diet
+
+## Diet Data {.tabset}
+
+```{r cat diet data, echo=FALSE, warning=FALSE}
+
+#plant diet
+#workingdata$diet_plant <- na.omit(workingdata$diet_plant)
+
+workingdata$plantdiet <- 
+  ifelse(workingdata$diet_plant <=0.073, "low", 
+  ifelse(workingdata$diet_plant >0.073 & workingdata$diet_plant <=0.652, "mid", "high"
+  ))
+
+#high protein fat diet
+#workingdata$diet_highprotfat <- na.omit(workingdata$diet_highprotfat)
+
+workingdata$protdiet <- 
+  ifelse(workingdata$diet_highprotfat <=-0.124, "low", 
+  ifelse(workingdata$diet_highprotfat >-0.124 & workingdata$diet_highprotfat <=0.551, "mid", "high"
+  ))
+
+#carb diet
+#workingdata$diet_highcarb <-na.omit(workingdata$diet_highcarb)
+
+workingdata$carbdiet <- 
+  ifelse(workingdata$diet_highcarb <=-0.204, "low", 
+  ifelse(workingdata$diet_highcarb >-0.204 & workingdata$diet_highcarb <=0.454, "mid", "high"
+  ))
+
+#salad wine diet
+#workingdata$diet_saladwine <- na.omit(workingdata$diet_saladwine)
+
+workingdata$saladwinediet <- 
+  ifelse(workingdata$diet_saladwine <=0.041, "low", 
+  ifelse(workingdata$diet_saladwine >0.041 & workingdata$diet_saladwine <0.727, "mid", "high"
+  ))
+
+
+
+#head(workingdata$saladwinediet, 100)
+
+
+
+
+```
+```{r factor diet data, echo=FALSE, warning=FALSE}
+
+
+workingdata$protdiet <-as.factor(workingdata$protdiet)
+workingdata$carbdiet <-as.factor(workingdata$carbdiet)
+workingdata$saladwinediet <-as.factor(workingdata$saladwinediet)
+workingdata$plantdiet <-as.factor(workingdata$plantdiet)
+
+#head(workingdata$saladwinediet, 100)
+#class(workingdata$saladwinediet)
+#factor
+
+
+
+```
+
+
+
+### 1: High Carb Diet {.tabset}
+
+
+```{r view for diet data high carb, echo=FALSE, warning=FALSE}
+#high carb
+highcarb= workingdata %>% filter (workingdata$deceased ==1) %>% select (deceased, carbdiet) %>%
+  group_by(carbdiet) %>% summarise(counts=n()) %>% ungroup() %>% arrange(desc(counts))
+head(highcarb,10)
+
+
+
+#workingdata$highcarb= as.numeric(workingdata$deceased)
+#workingdata$ccs1= as.numeric(workingdata$ccs1)
+cor.test(workingdata$deceased, workingdata$diet_highcarb, method ="pearson")
+
+
+
+
+
+
+
+```
+
+### 2: High Protein Diet {.tabset}
+```{r view for diet data prot fat, echo=FALSE, warning=FALSE}
+#high protein fat
+highprotfat= workingdata %>% filter (workingdata$deceased ==1) %>% select (deceased, protdiet) %>%
+  group_by(protdiet) %>% summarise(counts=n()) %>% ungroup() %>% arrange(desc(counts))
+head(highprotfat,10)
+
+cor.test(workingdata$deceased, workingdata$diet_highprotfat, method ="pearson")
+
+```
+
+
+### 3: High Plant Diet {.tabset}
+```{r view for diet data plant, echo=FALSE, warning=FALSE}
+#high plant
+highplant= workingdata %>% filter (workingdata$deceased ==1) %>% select (deceased, plantdiet) %>%
+  group_by(plantdiet) %>% summarise(counts=n()) %>% ungroup() %>% arrange(desc(counts))
+head(highplant,10)
+
+cor.test(workingdata$deceased, workingdata$diet_plant, method ="pearson")
+
+```
+
+
+### 4: High Salad/Wine Diet {.tabset}
+```{r view for diet data salad wine, echo=FALSE, warning=FALSE}
+#salad wine
+saladwine= workingdata %>% filter (workingdata$deceased ==1) %>% select (deceased, saladwinediet) %>%
+  group_by(saladwinediet) %>% summarise(counts=n()) %>% ungroup() %>% arrange(desc(counts))
+head(saladwine,10)
+
+cor.test(workingdata$deceased, workingdata$diet_saladwine, method ="pearson")
+
+```
+
+Based on the Pearson's Correlation test, all diet has some correlation to the rate of deceased with high carb diet having the strongest correlation among the surveyed diets.
+
+# Prediction model
+
+```{r facotring data cleanup for prediction model , echo=FALSE, warning=FALSE}
+
+workingdata$hbp_self_q1 <- as.factor(workingdata$hbp_self_q1)
+workingdata$hbpmed_totyrs <-as.factor(workingdata$hbpmed_totyrs)
+workingdata$mammo_ever_q1 <-as.factor(workingdata$mammo_ever_q1)
+workingdata$sit_hrs <- as.factor (workingdata$sit_hrs)
+workingdata$sleep_hrs <-as.factor(workingdata$sleep_hrs)
+workingdata$serv_fats_q1 <-as.factor(workingdata$serv_fats_q1)
+workingdata$vit_reg_no <-as.factor(workingdata$vit_reg_no)
+workingdata$ses_quartile_ind <-as.factor(workingdata$ses_quartile_ind)
+workingdata$brca <-as.factor(workingdata$brca)
+#workingdata$deceased<-as.integer(workingdata$deceased)                                     
+
+```
+
+
+
+```{r setting up prediction model, echo=FALSE, warning=FALSE, include= FALSE}
+
+
+modeldata <- 
+  workingdata %>%
+  select(deceased30days, deceased, deceased180days, deceased365days, deceased1825days, deceasedafter1825days, agedata, diet_highcarb, diet_highprotfat, diet_plant, diet_saladwine, major_diag_cat_cde, payer_cat_cde, payer_coverage_typ, total_charges_amt, patient_disposition_cde, meno_stattype, oralcntr_yrs, oralcntr_ever_q1, bmi_q1, hbp_self_q1, hbpmed_totyrs, mammo_ever_q1, allex_life_hrs, allex_hrs_q1, sit_hrs, sleep_hrs, serv_fats_q1, dief_ethnic, vit_mulvit_q1, vit_reg_no, smoke_lifeexpo, smoke_totpackyrs, smoke_totyrs, alchl_g_dayrecen, diag_ccs_code1,facility_zip5_cde, participant_race, ses_quartile_ind, brca)
+
+
+
+
+na.omit(modeldata)
+modeldata[is.na(modeldata)]= 0
+modeldata <-modeldata[complete.cases(modeldata),]
+#modeldata= modeldata %>% mutate_each(funs(as.factor))
+#modeldata <-as.numeric(modeldata$deceased)
+
+#modeldata <-as.factor(modeldata$deceasedtimepoints)
+#sum(!complete.cases(modeldata))
+ #4744 missing values
+
+#str(modeldata)
+
+#fill in missing values with median of each variable
+#=modeldata
+#for(i in 1:ncol(modeldata)) {
+#  modeldata[ , i][is.na(modeldata[ , i])] <- 0, na.rm=TRUE)
+#}
+
+
+#need to change char to factor and add levels
+
+
+
+
+```
+
+
+
+## Overall Random Forest Prediction Model {.tabset}
+
+### Performance
+
+```{r random forest seed, echo=FALSE, warning=FALSE}
+library(datasets)
+library(randomForest)
+library(caTools)
+library(mlr)
+library(pROC)
+
+
+#model3<-makeClassifTask(id="deceased predict", data=modeldata, target="deceased")
+#model3test <-subsetTask(model3, subset=data_valid)
+#model3_RF<-randomForest(deceased ~., data=modeldata[traindata,], mtry=sqrt(50), ntree=500, strata=modeldata$deceased[traindata])
+
+
+
+#varImpPlot(model3_RF)
+#importance(model3_RF)
+modeldata$deceased <-as.factor(modeldata$deceased)
+
+set.seed(207)
+
+index=sample(1:nrow(modeldata),floor(0.75*nrow(modeldata)))
+train=modeldata[index,]
+test=modeldata[-index,]
+#ind<-sample.split(modeldata, SplitRatio= 0.75)
+#train<-modeldata [ind==TRUE]
+#test <-modeldata [ind==FALSE]
+
+#train<-na.omit(train)
+#test<-na.omit(test)
+
+task<-makeClassifTask(data=train, target="deceased")
+lrnr<-makeLearner("classif.randomForest")
+rdesc <-makeResampleDesc("Holdout",split=0.75)
+mod<-train(lrnr, task)
+rf<-randomForest(deceased ~., data=train, proximity=TRUE)
+mod
+mod$err.rate[,1]
+
+pred<-predict(mod$learner.model, task=task, subset=test)
+res<-resample(learner=lrnr, task=task, resampling=rdesc)
+
+#get prediction on test set
+#getPredictionResponse(res$pred)
+
+#compute accuracy
+performance (res$pred, acc)
+
+
+
+```
+
+
+
+```{r random forest test1, echo=FALSE, warning=FALSE}
+library(pROC)
+model1 <-randomForest(deceased ~ ., data=train, importance=TRUE)
+#model1
+
+#Call:
+# randomForest(formula = deceased ~ ., data = train, importance = TRUE) 
+#               Type of random forest: classification
+#                     Number of trees: 500
+#No. of variables tried at each split: 5
+
+#        OOB estimate of  error rate: 6.68%
+#Confusion matrix:
+#    0   1 class.error
+#0 239   0   0.0000000
+#1  38 292   0.1151515
+
+
+```
+
+### Model/ Variable Importance
+
+```{r random forest test2, echo=FALSE, warning=FALSE}
+model2 <-randomForest(deceased ~ ., data=train, ntree=500, mtry=5, importance=TRUE)
+model2
+```
+
+
+
+```{r random forest pred, echo=FALSE, warning=FALSE}
+predTrain <-predict(model2, train, type="class")
+table(predTrain, train$deceased)
+```
+
+```{r random forest plot2, echo=FALSE, warning=FALSE}
+#importance(model2)
+varImpPlot(model2, main="Variable Importance for Death after Hospitlization")
+
+
+
+
+```
+
+## Random Forest Prediction Model by Time to Deceased Timepoints {.tabset}
+
+### 1: <30days {.tabset}
+```{r random forest timepoints 30, echo=FALSE, warning=FALSE}
+model30 <- 
+  modeldata %>%
+  select(deceased, deceased30days, agedata, diet_highcarb, diet_highprotfat, diet_plant, diet_saladwine, major_diag_cat_cde, payer_cat_cde, payer_coverage_typ, total_charges_amt, patient_disposition_cde, meno_stattype, oralcntr_yrs, oralcntr_ever_q1, bmi_q1, hbp_self_q1, hbpmed_totyrs, mammo_ever_q1, allex_life_hrs, allex_hrs_q1, sit_hrs, sleep_hrs, serv_fats_q1, dief_ethnic, vit_mulvit_q1, vit_reg_no, smoke_lifeexpo, smoke_totpackyrs, smoke_totyrs, alchl_g_dayrecen, diag_ccs_code1,facility_zip5_cde, participant_race, ses_quartile_ind, brca)
+```
+
+
+
+```{r random forest timepoints 30 seed, echo=FALSE, warning=FALSE}
+set.seed(300)
+
+index=sample(1:nrow(modeldata),floor(0.75*nrow(modeldata)))
+train=modeldata[index,]
+test=modeldata[-index,]
+#ind<-sample.split(model30, SplitRatio= 0.75)
+#train<-model30 [ind==TRUE]
+#test <-model30 [ind==FALSE]
+
+#train<-na.omit(train)
+#test<-na.omit(test)
+
+task<-makeClassifTask(data=train, target="deceased30days")
+lrnr<-makeLearner("classif.randomForest")
+rdesc <-makeResampleDesc("Holdout",split=0.75)
+mod<-train(lrnr, task)
+rf<-randomForest(deceased30days ~., data=train, proximity=TRUE)
+mod
+mod$err.rate[,1]
+pred<-predict(mod$learner.model, task=task, subset=test)
+res<-resample(learner=lrnr, task=task, resampling=rdesc)
+
+#get prediction on test set
+#getPredictionResponse(res$pred)
+
+#compute accuracy
+performance (res$pred, acc)
+
+```
+
+
+
+```{r random forest timepoints 30 model, echo=FALSE, warning=FALSE}
+model30 <-randomForest(deceased30days ~ ., data=train, ntree=500, mtry=5, importance=TRUE)
+model30
+
+predTrain <-predict(model30, train, type="class")
+table(predTrain, train$deceased30days)
+
+#importance(model30)
+varImpPlot(model30, main="Variable Importance for Death after Hospitlization for 30days")
+```
+
+### 2: 31-180days {.tabset}
+
+```{r random forest timepoints 180, echo=FALSE, warning=FALSE}
+model180 <- 
+  modeldata %>%
+  select(deceased180days, agedata, diet_highcarb, diet_highprotfat, diet_plant, diet_saladwine, major_diag_cat_cde, payer_cat_cde, payer_coverage_typ, total_charges_amt, patient_disposition_cde, meno_stattype, oralcntr_yrs, oralcntr_ever_q1, bmi_q1, hbp_self_q1, hbpmed_totyrs, mammo_ever_q1, allex_life_hrs, allex_hrs_q1, sit_hrs, sleep_hrs, serv_fats_q1, dief_ethnic, vit_mulvit_q1, vit_reg_no, smoke_lifeexpo, smoke_totpackyrs, smoke_totyrs, alchl_g_dayrecen, diag_ccs_code1,facility_zip5_cde, participant_race, ses_quartile_ind, brca)
+```
+
+```{r random forest timepoints 180 seed, echo=FALSE, warning=FALSE}
+set.seed(180)
+
+
+index=sample(1:nrow(modeldata),floor(0.75*nrow(modeldata)))
+train=modeldata[index,]
+test=modeldata[-index,]
+
+#ind<-sample.split(model180, SplitRatio= 0.75)
+#train<-model180 [ind==TRUE]
+#test <-model180 [ind==FALSE]
+
+#train<-na.omit(train)
+#test<-na.omit(test)
+
+task<-makeClassifTask(data=train, target="deceased180days")
+lrnr<-makeLearner("classif.randomForest")
+rdesc <-makeResampleDesc("Holdout",split=0.75)
+mod<-train(lrnr, task)
+rf<-randomForest(deceased180days ~., data=train, proximity=TRUE)
+mod
+mod$err.rate[,1]
+pred<-predict(mod$learner.model, task=task, subset=test)
+res<-resample(learner=lrnr, task=task, resampling=rdesc)
+
+#get prediction on test set
+#getPredictionResponse(res$pred)
+
+#compute accuracy
+performance (res$pred, acc)
+
+```
+
+```{r random forest timepoints 180 model, echo=FALSE, warning=FALSE}
+model180 <-randomForest(deceased180days ~ ., data=train, ntree=500, mtry=5, importance=TRUE)
+model180
+
+predTrain <-predict(model180, train, type="class")
+table(predTrain, train$deceased180days)
+
+#importance(model180)
+varImpPlot(model180, main="Variable Importance for Death after Hospitlization for 180days")
+```
+
+### 3: 181-365days {.tabset}
+
+```{r random forest timepoints 365, echo=FALSE, warning=FALSE}
+model365 <- 
+  modeldata %>%
+  select(deceased, deceased365days, agedata, diet_highcarb, diet_highprotfat, diet_plant, diet_saladwine, major_diag_cat_cde, payer_cat_cde, payer_coverage_typ, total_charges_amt, patient_disposition_cde, meno_stattype, oralcntr_yrs, oralcntr_ever_q1, bmi_q1, hbp_self_q1, hbpmed_totyrs, mammo_ever_q1, allex_life_hrs, allex_hrs_q1, sit_hrs, sleep_hrs, serv_fats_q1, dief_ethnic, vit_mulvit_q1, vit_reg_no, smoke_lifeexpo, smoke_totpackyrs, smoke_totyrs, alchl_g_dayrecen, diag_ccs_code1,facility_zip5_cde, participant_race, ses_quartile_ind, brca)
+```
+
+```{r random forest timepoints 365 seed, echo=FALSE, warning=FALSE}
+set.seed(365)
+
+
+index=sample(1:nrow(modeldata),floor(0.75*nrow(modeldata)))
+train=modeldata[index,]
+test=modeldata[-index,]
+#ind<-sample.split(model365, SplitRatio= 0.75)
+#train<-model365 [ind==TRUE]
+#test <-model365 [ind==FALSE]
+
+#train<-na.omit(train)
+#test<-na.omit(test)
+
+task<-makeClassifTask(data=train, target="deceased365days")
+lrnr<-makeLearner("classif.randomForest")
+rdesc <-makeResampleDesc("Holdout",split=0.75)
+mod<-train(lrnr, task)
+rf<-randomForest(deceased365days ~., data=train, proximity=TRUE)
+mod
+mod$err.rate[,1]
+pred<-predict(mod$learner.model, task=task, subset=test)
+res<-resample(learner=lrnr, task=task, resampling=rdesc)
+
+#get prediction on test set
+#getPredictionResponse(res$pred)
+
+#compute accuracy
+performance (res$pred, acc)
+
+```
+```{r random forest timepoints 365 model, echo=FALSE, warning=FALSE}
+model365 <-randomForest(deceased365days ~ ., data=train, ntree=500, mtry=5, importance=TRUE)
+model365
+
+predTrain <-predict(model365, train, type="class")
+table(predTrain, train$deceased365days)
+
+#importance(model365)
+varImpPlot(model365, main="Variable Importance for Death after Hospitlization for 365days")
+```
+
+### 4: 366-1825days {.tabset}
+
+```{r random forest timepoints 1825, echo=FALSE, warning=FALSE}
+model1825 <- 
+  modeldata %>%
+  select(deceased, deceased1825days, agedata, diet_highcarb, diet_highprotfat, diet_plant, diet_saladwine, major_diag_cat_cde, payer_cat_cde, payer_coverage_typ, total_charges_amt, patient_disposition_cde, meno_stattype, oralcntr_yrs, oralcntr_ever_q1, bmi_q1, hbp_self_q1, hbpmed_totyrs, mammo_ever_q1, allex_life_hrs, allex_hrs_q1, sit_hrs, sleep_hrs, serv_fats_q1, dief_ethnic, vit_mulvit_q1, vit_reg_no, smoke_lifeexpo, smoke_totpackyrs, smoke_totyrs, alchl_g_dayrecen, diag_ccs_code1,facility_zip5_cde, participant_race, ses_quartile_ind, brca)
+```
+
+```{r random forest timepoints 1825 seed, echo=FALSE, warning=FALSE}
+set.seed(1825)
+
+
+index=sample(1:nrow(modeldata),floor(0.75*nrow(modeldata)))
+train=modeldata[index,]
+test=modeldata[-index,]
+#ind<-sample.split(model1825, SplitRatio= 0.75)
+#train<-model1825 [ind==TRUE]
+#test <-model1825 [ind==FALSE]
+
+#train<-na.omit(train)
+#test<-na.omit(test)
+
+task<-makeClassifTask(data=train, target="deceased1825days")
+lrnr<-makeLearner("classif.randomForest")
+rdesc <-makeResampleDesc("Holdout",split=0.75)
+mod<-train(lrnr, task)
+rf<-randomForest(deceased1825days ~., data=train, proximity=TRUE)
+mod
+mod$err.rate[,1]
+pred<-predict(mod$learner.model, task=task, subset=test)
+res<-resample(learner=lrnr, task=task, resampling=rdesc)
+
+#get prediction on test set
+#getPredictionResponse(res$pred)
+
+#compute accuracy
+performance (res$pred, acc)
+
+```
+
+
+```{r random forest timepoints 1825 model, echo=FALSE, warning=FALSE}
+model1825 <-randomForest(deceased1825days ~ ., data=train, ntree=500, mtry=5, importance=TRUE)
+model1825
+
+predTrain <-predict(model1825, train, type="class")
+table(predTrain, train$deceased1825days)
+
+#importance(model1825)
+varImpPlot(model1825, main="Variable Importance for Death after Hospitlization for 1825days")
+```
+
+Based on the Random Forest Prediction model for each timespoints for short-term risk to deceased, oral cancer, menopause, patients coverage type for hostpital bill, smoking exposure and high carb diet are variables that put you at risk for short-term mortality. 
+The accuracy rate for the overall prediction model is 90% and the accuracy rate for days to deceased for each timepoint is >99%.
+
+# Spatial
+
+## Spatial Data {.tabset}
+
+```{r Spatial setup, echo=FALSE, warning=FALSE}
+library(ggplot2)
+library(zipcodeR)
+
+workingdata$daystodeceased_dc <- as.numeric(workingdata$daystodeceased_dc)
+spatialdata = workingdata %>% select(deceased, facility_zip5_cde,daystodeceased_dc)
+spatialcount= (spatialdata %>% count(facility_zip5_cde, deceased, sort= TRUE))
+spatialcount= spatialcount %>% group_by(facility_zip5_cde) %>%
+  mutate(countSpatial=sum(n))
+spatialcount= spatialcount %>% group_by(facility_zip5_cde) %>% mutate(rate= n/countSpatial)
+spatialdf= as.data.frame(spatialcount %>% filter(deceased==1))
+
+#spatialdf
+
+
+```
+
+
+
+### Spatial Plot 
+```{r Spatial plot, echo=FALSE, warning=FALSE}
+library(leaflet)
+library(leaflet.providers)
+library(maps)
+library(RCurl)
+library(dplyr)
+
+library(ggplot2)
+library(zipcodeR)
+spatialcount$facility_zip5_cde=as.integer(spatialcount$facility_zip5_cde)
+#spatialcount$zipcode=as.factor(spatialcount$zipcode)
+spatialcount$n=as.numeric(spatialcount$n)
+plotgeo <- geocode_zip(spatialcount$facility_zip5_cde)
+spatialcount$zipcode <-spatialcount$facility_zip5_cde
+spatialcount$zipcode <- as.character(spatialcount$zipcode)
+
+
+data("zip_code_db")
+latlong=zip_code_db %>% select(zipcode, lat, lng)
+joindf=merge(spatialdf, latlong, by.x="facility_zip5_cde", by.y="zipcode", all.x=TRUE, all.y=FALSE)
+ca=map_data("state")
+ca=subset(map_data("state"), region=="california")
+ggplot()+
+geom_polygon(data=ca, aes(x =long, y=lat, group=group), fill="blue", color="yellow", alpha=0.5)+
+  geom_point (data=joindf, aes(x=lng, y=lat, alpha= facility_zip5_cde, color= n), shape=20, stroke=TRUE)
+
+
+
+
+
+
+```
+
+### List of Death count corrosponing to Zipcode
+
+```{r Spatial, echo=FALSE, warning=FALSE}
+
+spatialdf
+
+```
+
+### Spatial Correlation
+
+```{r Spatial pearson, echo=FALSE, warning=FALSE}
+cor.test(workingdata$deceased, workingdata$facility_zip5_cde, method ="pearson")
+
+```
+
+
+
+# Conclusion
+
+Based on this analysis, the develop Random Forest prediction model was able to moderately predict short-term risk of death based on prior in-patient hospitalization records from this CTS study. The accuracy for predicting overall mortality risk was 94% and the accuracy for predicting short-term mortality risk was >96%. For participants who passed away within 30days after discharge, the model suggests menopause, oral cancer, high carbohydrate diet and how much the patient coverage type for hospital bill was are predictive factors for risk of mortality after hospitalization. For the models for patients who passed away passed 30days, smoke exposure and age are also predictive factors for mortality risk.
+
+In assessing whether time window after hospitalization plays a role in predicting risk of death. The group that had the highest death rate was patients that were discharged from the hospital between 1 to 5 years. This is a long stretch of time and many factor can contribute including variables unrelated to the study.
+
+To identify whether certain co-morbidities contributes to predicting the risk of death, the CCS variables were evaluated. Among the 5 ccs codes, essential hypertension, cardiac dysrhthmias, disorders of lipid metabolism and osteoarthritis are among the highest diagnoses within patients that have died. Based on the Pearson's correlation analysis, there is a small association between diagnosis based on theses ccs code and death. The major diagnosis category is a moderate predictive factor for short-term mortality risks based on the Random Forest prediction model. The top 3 diagnosis among the deceased are Other infections; including parasitic, HIV infection and Hepatitis.
+
+To determine whether there are any spatial (zip code) correlation with hospitalization-related deaths the number of deceased were counted per zipcode. Based on Pearson's correlation, there is minimal correlation between zipcode mortality rate, however you do see higher number of deaths in more populated areas. 

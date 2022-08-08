@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Stephanie Tring" />
+
+
+<title>CTS Mortality Risk Prediction Project</title>
+
+<script src="site_libs/header-attrs-2.9/header-attrs.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<script src="site_libs/kePrint-0.0.1/kePrint.js"></script>
+<link href="site_libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">CTS Mortality Risk Prediction Project</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">CTS Mortality Risk Prediction Project</h1>
+<h4 class="author">Stephanie Tring</h4>
+
+</div>
+
+
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>In this study a research study conducted by the USC Public Health Data Science Department, OSHPD hospitalization records from the California Teachers Study (CTS) were analyzed. The data from the CTS study contains extensive hospital recording and survey data on 48324 participants spanning from 2011-2018.</p>
+<p>The primary objective of this project are:</p>
+<ol style="list-style-type: decimal">
+<li><p>Develop a prediction model to predict short-term risk of death based on prior in-patient hospitalization records from this CTS study.</p></li>
+<li><p>Assess whether time window after hospitalization plays a role in predicting risk of death.</p></li>
+<li><p>Identify whether certain co-morbidities contributes to predicting the risk of death.</p></li>
+<li><p>To determine whether there are any temporal(seasonal) or spatial (zip code) correlation with hospitalization-related deaths.</p></li>
+</ol>
+</div>
+<div id="methods" class="section level1">
+<h1>Methods</h1>
+<ol style="list-style-type: decimal">
+<li><p>To analyze the data, the initial dataset will be assess under exploratory data analysis methods (EDA). Under EDA, the data will be explored based on key factors such as dimension of the dataset to asses number of participants and number of variables as well as understanding the main aim the study, which is the variable deceased.</p></li>
+<li><p>Preprocessing of the data. The dataset will be preprocessed to clean/manage to perform downstream analysis. This includes removing of duplicates and any other dataset that would skew or create inaccurate analysis.</p></li>
+<li><p>Data Analysis of specific aims. The dataset will be categorized and parsed to study the main objectives such as timepoints of time to deceased of participants, co-morbidities in relations to deceased and time to deceased, length of stay in hospital in relation to deceased. Basic visualization and statistical pearson’s correlation analysis will be performed on these topics.</p></li>
+<li><p>Prediction model will be created to predict risk to death based on hospitalization records as well as specific variables as listed above. Random Forest model will be used to predict overall risk of death as well as predict risk of death based on time to deceased.</p></li>
+<li><p>Spatial significance in relation to death rate will be analyzed. As economic status is highly correlated to zip code, this information will be assessed over temporal data to check whether there is a spatial relationship with rate of death as this may also infer socioeconimic status relationship with mortality rate.</p></li>
+</ol>
+</div>
+<div id="eda" class="section level1">
+<h1>EDA</h1>
+<p>Loading data</p>
+<pre><code>## [1] 48324</code></pre>
+<p>There are 48324 participants in this study.</p>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:right;">
+Deceased
+</th>
+<th style="text-align:right;">
+Number of Participants
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+29850
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+18474
+</td>
+</tr>
+</tbody>
+</table>
+<p>This data set has 154315 participants and 164 variables. Of the total participants, 83404 were noted as deceased, however after removing duplicates, the data has 48324 participants and 164 variables with 18474 recorded as deceased and 29850 alive.</p>
+<div id="main-variables-analyses" class="section level2">
+<h2>Main Variables Analyses</h2>
+</div>
+</div>
+<div id="number-of-days-to-deceased-after-discharged" class="section level1">
+<h1>Number of Days to Deceased after Discharged</h1>
+<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA&#39;s 
+##       1     594    1798    2110    3361    6739   32034</code></pre>
+<p><img src="index_files/figure-html/EDA%20set%20timepoints%20plot-1.png" width="672" /></p>
+<p>Patients had the highest number of mortality after 5years after discharged. As 5 years is a significant amount of time, this may not be related to variables related to the hospitalization data and therefore may not be accurate for predicting risk of death. The second highest is 1 to 5 years.</p>
+</div>
+<div id="length-of-stay" class="section level1">
+<h1>Length of Stay</h1>
+<p><img src="index_files/figure-html/plot%20Variables%20Length%20of%20Hospital%20Stay-1.png" width="672" /></p>
+<p>The time to deceased ranges from 1 to 6739 days after discharged</p>
+<pre><code>## 
+##  Pearson&#39;s product-moment correlation
+## 
+## data:  workingdata$deceased and workingdata$length_of_stay_day_cnt
+## t = 37.72, df = 47680, p-value &lt; 2.2e-16
+## alternative hypothesis: true correlation is not equal to 0
+## 95 percent confidence interval:
+##  0.1614944 0.1789259
+## sample estimates:
+##       cor 
+## 0.1702235</code></pre>
+<p>Based on the visual analysis of lenth of stay in relation to number of deceased, patients staying for 1 to 2 months were among the highest group that are deceased. Based on the Pearson correlation analysis, Length of stay is not signigicantly correlated to number deceased.</p>
+</div>
+<div id="age" class="section level1">
+<h1>Age</h1>
+<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA&#39;s 
+##   34.00   79.00   86.00   84.31   92.00  111.00   32034</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">&lt;50</th>
+<th align="right">50-75</th>
+<th align="right">76-90</th>
+<th align="right">&gt;90</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">0</td>
+<td align="right">605</td>
+<td align="right">15705</td>
+<td align="right">10905</td>
+<td align="right">2635</td>
+</tr>
+<tr class="even">
+<td align="left">1</td>
+<td align="right">69</td>
+<td align="right">3047</td>
+<td align="right">8274</td>
+<td align="right">6442</td>
+</tr>
+</tbody>
+</table>
+<p><img src="index_files/figure-html/Variables%20Age-1.png" width="672" /></p>
+<pre><code>## 
+##  Pearson&#39;s product-moment correlation
+## 
+## data:  workingdata$deceased and workingdata$agedata
+## t = 100.35, df = 47680, p-value &lt; 2.2e-16
+## alternative hypothesis: true correlation is not equal to 0
+## 95 percent confidence interval:
+##  0.4101272 0.4249489
+## sample estimates:
+##       cor 
+## 0.4175658</code></pre>
+<p>The age group is 32 to 92 years old. Based on the visualization plot, participants in groups 90 and older are among the highest that have died. Based on the Pearson correlation analysis, there is moderate association between age and death.</p>
+</div>
+<div id="co-morbidities" class="section level1">
+<h1>Co-morbidities</h1>
+<pre><code>##    major_diag_cat_cde     n
+## 1                   8 11926
+## 2                   5  6196
+## 3                   6  4791
+## 4                  13  4609
+## 5                   0  3028
+## 6                   1  2838
+## 7                   4  2649
+## 8                  14  2083
+## 9                   9  1961
+## 10                 10  1674
+## 11                  7  1390
+## 12                 11  1224
+## 13                 18   947
+## 14                 19   441
+## 15                  3   420
+## 16                 21   342
+## 17                 16   339
+## 18                 17   306
+## 19                 23   254
+## 20                 24    91
+## 21                 20    90
+## 22                  2    71
+## 23                 22    10
+## 24                 25     2</code></pre>
+<p>Top 10 most frequent diagnoses are:</p>
+<p>8 Other infections; including parasitic</p>
+<p>5 HIV infection</p>
+<p>6 Hepatitis</p>
+<p>13 Cancer of stomach</p>
+<p>0 Undefined</p>
+<p>1 Tuberculosis</p>
+<p>4 Mycoses</p>
+<p>14 Cancer of colon</p>
+<p>9 Sexually transmitted infections (not HIV or hepatitis)</p>
+<p>10 Immunizations and screening for infectious disease</p>
+<div id="ccs-among-deceased" class="section level3 tabset">
+<h3 class="tabset">CCS Among Deceased</h3>
+<pre><code>## # A tibble: 5 x 2
+##   diag_ccs1                                                               counts
+##   &lt;chr&gt;                                                                    &lt;int&gt;
+## 1 Osteoarthritis                                                            1537
+## 2 Fracture of neck of femur (hip)                                            811
+## 3 Cardiac dysrhythmias                                                       798
+## 4 Acute cerebrovascular disease                                              661
+## 5 Pneumonia (except that caused by tuberculosis or sexually transmitted ~    603</code></pre>
+<pre><code>## # A tibble: 5 x 2
+##   diag_ccs2              counts
+##   &lt;chr&gt;                   &lt;int&gt;
+## 1 Essential hypertension   1342
+## 2 Cardiac dysrhythmias     1170
+## 3 &lt;NA&gt;                     1066
+## 4 Undefined                 791
+## 5 Secondary malignancies    781</code></pre>
+<pre><code>## # A tibble: 5 x 2
+##   diag_ccs3                       counts
+##   &lt;chr&gt;                            &lt;int&gt;
+## 1 &lt;NA&gt;                              1956
+## 2 Essential hypertension            1810
+## 3 Cardiac dysrhythmias               795
+## 4 Fluid and electrolyte disorders    594
+## 5 Undefined                          519</code></pre>
+<pre><code>## # A tibble: 5 x 2
+##   diag_ccs4                       counts
+##   &lt;chr&gt;                            &lt;int&gt;
+## 1 &lt;NA&gt;                              3378
+## 2 Essential hypertension            1599
+## 3 Disorders of lipid metabolism      674
+## 4 Thyroid disorders                  616
+## 5 Fluid and electrolyte disorders    516</code></pre>
+<pre><code>## # A tibble: 5 x 2
+##   diag_ccs5                     counts
+##   &lt;chr&gt;                          &lt;int&gt;
+## 1 &lt;NA&gt;                            5107
+## 2 Essential hypertension          1264
+## 3 Disorders of lipid metabolism    666
+## 4 Thyroid disorders                601
+## 5 Cardiac dysrhythmias             375</code></pre>
+<pre><code>## 
+##  Pearson&#39;s product-moment correlation
+## 
+## data:  workingdata$deceased and workingdata$major_diag_cat_cde
+## t = -35.214, df = 47680, p-value &lt; 2.2e-16
+## alternative hypothesis: true correlation is not equal to 0
+## 95 percent confidence interval:
+##  -0.1679469 -0.1504504
+## sample estimates:
+##        cor 
+## -0.1592112</code></pre>
+<p>Among the 5 ccs codes, essential hypertension, cardiac dysrhthmias, disorders of lipid metabolism and osteoarthritis are among the highest diagnoses within patients that have died. Based on the Pearson’s correlation analysis, there is a small association between diagnosis based on theses ccs code and death.</p>
+</div>
+<div id="co-morbidities-based-on-ccs-code-per-timepoint-to-deceased" class="section level3 tabset">
+<h3 class="tabset">Co-morbidities based on CCS code per timepoint to deceased</h3>
+<div id="ccs-code-1" class="section level4 tabset">
+<h4 class="tabset">1: CCS code 1</h4>
+<pre><code>##   diag_ccs_code1
+## 1            109
+## 2             42
+## 3              2
+## 4            122
+## 5             19
+##                                                                        diag_ccs1
+## 1                                                  Acute cerebrovascular disease
+## 2                                                         Secondary malignancies
+## 3                                                   Septicemia (except in labor)
+## 4 Pneumonia (except that caused by tuberculosis or sexually transmitted disease)
+## 5                                                       Cancer of bronchus; lung
+##    n
+## 1 87
+## 2 63
+## 3 52
+## 4 31
+## 5 24</code></pre>
+<pre><code>##   diag_ccs_code1                                 diag_ccs1   n
+## 1             42                    Secondary malignancies 103
+## 2            226           Fracture of neck of femur (hip)  70
+## 3            109             Acute cerebrovascular disease  67
+## 4            108 Congestive heart failure; nonhypertensive  66
+## 5              2              Septicemia (except in labor)  61</code></pre>
+<pre><code>##   diag_ccs_code1
+## 1            122
+## 2            226
+## 3            109
+## 4              2
+## 5             42
+##                                                                        diag_ccs1
+## 1 Pneumonia (except that caused by tuberculosis or sexually transmitted disease)
+## 2                                                Fracture of neck of femur (hip)
+## 3                                                  Acute cerebrovascular disease
+## 4                                                   Septicemia (except in labor)
+## 5                                                         Secondary malignancies
+##    n
+## 1 46
+## 2 44
+## 3 39
+## 4 37
+## 5 34</code></pre>
+<pre><code>##   diag_ccs_code1
+## 1            226
+## 2            106
+## 3            203
+## 4            122
+## 5            109
+##                                                                        diag_ccs1
+## 1                                                Fracture of neck of femur (hip)
+## 2                                                           Cardiac dysrhythmias
+## 3                                                                 Osteoarthritis
+## 4 Pneumonia (except that caused by tuberculosis or sexually transmitted disease)
+## 5                                                  Acute cerebrovascular disease
+##     n
+## 1 268
+## 2 222
+## 3 220
+## 4 202
+## 5 178</code></pre>
+<pre><code>##   diag_ccs_code1                       diag_ccs1   n
+## 1            203                  Osteoarthritis 981
+## 2            106            Cardiac dysrhythmias 393
+## 3            226 Fracture of neck of femur (hip) 306
+## 4            102          Nonspecific chest pain 276
+## 5              0                       Undefined 270</code></pre>
+</div>
+<div id="ccs-code-2" class="section level4 tabset">
+<h4 class="tabset">2: CCS code 2</h4>
+<pre><code>##   diag_ccs_code2
+## 1             42
+## 2            106
+## 3            122
+## 4            131
+## 5              0
+##                                                                        diag_ccs2
+## 1                                                         Secondary malignancies
+## 2                                                           Cardiac dysrhythmias
+## 3 Pneumonia (except that caused by tuberculosis or sexually transmitted disease)
+## 4                             Respiratory failure; insufficiency; arrest (adult)
+## 5                                                                      Undefined
+##    n
+## 1 68
+## 2 46
+## 3 46
+## 4 37
+## 5 34</code></pre>
+<pre><code>##   diag_ccs_code2                       diag_ccs2   n
+## 1             42          Secondary malignancies 147
+## 2              0                       Undefined  72
+## 3            106            Cardiac dysrhythmias  71
+## 4             55 Fluid and electrolyte disorders  67
+## 5            159        Urinary tract infections  65</code></pre>
+<pre><code>##   diag_ccs_code2                       diag_ccs2  n
+## 1             42          Secondary malignancies 88
+## 2            106            Cardiac dysrhythmias 43
+## 3              0                       Undefined 39
+## 4             55 Fluid and electrolyte disorders 39
+## 5            159        Urinary tract infections 33</code></pre>
+<pre><code>##   diag_ccs_code2                diag_ccs2   n
+## 1            106     Cardiac dysrhythmias 349
+## 2             42   Secondary malignancies 302
+## 3             98   Essential hypertension 265
+## 4            159 Urinary tract infections 244
+## 5              0                Undefined 225</code></pre>
+<pre><code>##   diag_ccs_code2                                        diag_ccs2   n
+## 1             98                           Essential hypertension 795
+## 2             NA                                             &lt;NA&gt; 586
+## 3            106                             Cardiac dysrhythmias 572
+## 4              0                                        Undefined 354
+## 5            101 Coronary atherosclerosis and other heart disease 303</code></pre>
+</div>
+<div id="ccs-code-3" class="section level4 tabset">
+<h4 class="tabset">3: CCS code 3</h4>
+<pre><code>##   diag_ccs_code3                       diag_ccs3  n
+## 1             42          Secondary malignancies 72
+## 2             55 Fluid and electrolyte disorders 40
+## 3             NA                            &lt;NA&gt; 34
+## 4            106            Cardiac dysrhythmias 32
+## 5             98          Essential hypertension 31</code></pre>
+<pre><code>##   diag_ccs_code3                       diag_ccs3   n
+## 1             42          Secondary malignancies 110
+## 2             55 Fluid and electrolyte disorders  79
+## 3             NA                            &lt;NA&gt;  79
+## 4             98          Essential hypertension  72
+## 5            106            Cardiac dysrhythmias  64</code></pre>
+<pre><code>##   diag_ccs_code3                       diag_ccs3  n
+## 1             42          Secondary malignancies 65
+## 2             98          Essential hypertension 52
+## 3             NA                            &lt;NA&gt; 48
+## 4             55 Fluid and electrolyte disorders 34
+## 5            106            Cardiac dysrhythmias 34</code></pre>
+<pre><code>##   diag_ccs_code3                       diag_ccs3   n
+## 1             98          Essential hypertension 422
+## 2             NA                            &lt;NA&gt; 401
+## 3            106            Cardiac dysrhythmias 275
+## 4             55 Fluid and electrolyte disorders 186
+## 5             42          Secondary malignancies 176</code></pre>
+<pre><code>##   diag_ccs_code3                     diag_ccs3    n
+## 1             NA                          &lt;NA&gt; 1114
+## 2             98        Essential hypertension  992
+## 3            106          Cardiac dysrhythmias  314
+## 4             48             Thyroid disorders  295
+## 5             53 Disorders of lipid metabolism  287</code></pre>
+</div>
+<div id="ccs-code-4" class="section level4 tabset">
+<h4 class="tabset">4: CCS code 4</h4>
+<pre><code>##   diag_ccs_code4                       diag_ccs4  n
+## 1             42          Secondary malignancies 57
+## 2             NA                            &lt;NA&gt; 49
+## 3             98          Essential hypertension 37
+## 4             55 Fluid and electrolyte disorders 33
+## 5             95  Other nervous system disorders 24</code></pre>
+<pre><code>##   diag_ccs_code4                       diag_ccs4   n
+## 1             NA                            &lt;NA&gt; 136
+## 2             98          Essential hypertension  86
+## 3             42          Secondary malignancies  82
+## 4             55 Fluid and electrolyte disorders  70
+## 5              0                       Undefined  55</code></pre>
+<pre><code>##   diag_ccs_code4                       diag_ccs4  n
+## 1             NA                            &lt;NA&gt; 89
+## 2             98          Essential hypertension 64
+## 3             55 Fluid and electrolyte disorders 47
+## 4             42          Secondary malignancies 38
+## 5              0                       Undefined 32</code></pre>
+<pre><code>##   diag_ccs_code4                     diag_ccs4   n
+## 1             NA                          &lt;NA&gt; 671
+## 2             98        Essential hypertension 419
+## 3            106          Cardiac dysrhythmias 175
+## 4             53 Disorders of lipid metabolism 174
+## 5             48             Thyroid disorders 159</code></pre>
+<pre><code>##   diag_ccs_code4                                        diag_ccs4    n
+## 1             NA                                             &lt;NA&gt; 1961
+## 2             98                           Essential hypertension  787
+## 3             53                    Disorders of lipid metabolism  328
+## 4             48                                Thyroid disorders  286
+## 5            101 Coronary atherosclerosis and other heart disease  210</code></pre>
+</div>
+<div id="ccs-code-5" class="section level4 tabset">
+<h4 class="tabset">5: CCS code 5</h4>
+<pre><code>##   diag_ccs_code5                       diag_ccs5  n
+## 1             NA                            &lt;NA&gt; 75
+## 2             98          Essential hypertension 49
+## 3             55 Fluid and electrolyte disorders 41
+## 4             42          Secondary malignancies 29
+## 5            106            Cardiac dysrhythmias 27</code></pre>
+<pre><code>##   diag_ccs_code5              diag_ccs5   n
+## 1             NA                   &lt;NA&gt; 223
+## 2             98 Essential hypertension  87
+## 3             48      Thyroid disorders  57
+## 4             42 Secondary malignancies  52
+## 5            106   Cardiac dysrhythmias  42</code></pre>
+<pre><code>##   diag_ccs_code5                     diag_ccs5   n
+## 1             NA                          &lt;NA&gt; 134
+## 2             98        Essential hypertension  73
+## 3             48             Thyroid disorders  33
+## 4            259  Residual codes; unclassified  29
+## 5             53 Disorders of lipid metabolism  28</code></pre>
+<pre><code>##   diag_ccs_code5                     diag_ccs5    n
+## 1             NA                          &lt;NA&gt; 1060
+## 2             98        Essential hypertension  385
+## 3             48             Thyroid disorders  161
+## 4             53 Disorders of lipid metabolism  155
+## 5            106          Cardiac dysrhythmias  136</code></pre>
+<pre><code>##   diag_ccs_code5                                        diag_ccs5    n
+## 1             NA                                             &lt;NA&gt; 2930
+## 2             98                           Essential hypertension  514
+## 3             53                    Disorders of lipid metabolism  330
+## 4             48                                Thyroid disorders  261
+## 5            101 Coronary atherosclerosis and other heart disease  167</code></pre>
+</div>
+</div>
+</div>
+<div id="diet" class="section level1">
+<h1>Diet</h1>
+<p>Diet of the participants were assessed. Based on the Pearson’s Correlation test, all diet has some correlation to the rate of deceased with high carb diet having the strongest correlation among the surveyed diets.</p>
+<div id="diet-data" class="section level2 tabset">
+<h2 class="tabset">Diet Data</h2>
+<div id="high-carb-diet" class="section level3 tabset">
+<h3 class="tabset">1: High Carb Diet</h3>
+<pre><code>## # A tibble: 4 x 2
+##   carbdiet counts
+##   &lt;fct&gt;     &lt;int&gt;
+## 1 low       10205
+## 2 mid        3087
+## 3 &lt;NA&gt;       2481
+## 4 high       2059</code></pre>
+<pre><code>## 
+##  Pearson&#39;s product-moment correlation
+## 
+## data:  workingdata$deceased and workingdata$diet_highcarb
+## t = -59.831, df = 42994, p-value &lt; 2.2e-16
+## alternative hypothesis: true correlation is not equal to 0
+## 95 percent confidence interval:
+##  -0.2859422 -0.2684905
+## sample estimates:
+##        cor 
+## -0.2772392</code></pre>
+</div>
+<div id="high-protein-diet" class="section level3 tabset">
+<h3 class="tabset">2: High Protein Diet</h3>
+<pre><code>## # A tibble: 4 x 2
+##   protdiet counts
+##   &lt;fct&gt;     &lt;int&gt;
+## 1 low        6874
+## 2 high       4426
+## 3 mid        4051
+## 4 &lt;NA&gt;       2481</code></pre>
+<pre><code>## 
+##  Pearson&#39;s product-moment correlation
+## 
+## data:  workingdata$deceased and workingdata$diet_highprotfat
+## t = 18.528, df = 42994, p-value &lt; 2.2e-16
+## alternative hypothesis: true correlation is not equal to 0
+## 95 percent confidence interval:
+##  0.07961801 0.09837282
+## sample estimates:
+##       cor 
+## 0.0890033</code></pre>
+</div>
+<div id="high-plant-diet" class="section level3 tabset">
+<h3 class="tabset">3: High Plant Diet</h3>
+<pre><code>## # A tibble: 4 x 2
+##   plantdiet counts
+##   &lt;fct&gt;      &lt;int&gt;
+## 1 low         7574
+## 2 high        4591
+## 3 mid         3186
+## 4 &lt;NA&gt;        2481</code></pre>
+<pre><code>## 
+##  Pearson&#39;s product-moment correlation
+## 
+## data:  workingdata$deceased and workingdata$diet_plant
+## t = 23.382, df = 42994, p-value &lt; 2.2e-16
+## alternative hypothesis: true correlation is not equal to 0
+## 95 percent confidence interval:
+##  0.1027144 0.1213816
+## sample estimates:
+##       cor 
+## 0.1120579</code></pre>
+</div>
+<div id="high-saladwine-diet" class="section level3 tabset">
+<h3 class="tabset">4: High Salad/Wine Diet</h3>
+<pre><code>## # A tibble: 4 x 2
+##   saladwinediet counts
+##   &lt;fct&gt;          &lt;int&gt;
+## 1 low             6359
+## 2 high            4861
+## 3 mid             4131
+## 4 &lt;NA&gt;            2481</code></pre>
+<pre><code>## 
+##  Pearson&#39;s product-moment correlation
+## 
+## data:  workingdata$deceased and workingdata$diet_saladwine
+## t = 32.234, df = 42994, p-value &lt; 2.2e-16
+## alternative hypothesis: true correlation is not equal to 0
+## 95 percent confidence interval:
+##  0.1443687 0.1628273
+## sample estimates:
+##       cor 
+## 0.1536114</code></pre>
+</div>
+</div>
+</div>
+<div id="prediction-model" class="section level1">
+<h1>Prediction model</h1>
+<p>A random prediction model was used, 50% of the data was used at the training data due to memory availability. Based on the Random Forest Prediction model for each timepoints for short-term risk to deceased menopause, total amount smoked, smoking exposure and diagnosis category 1 are variables that put you at risk for short-term mortality. The accuracy rate for the overall prediction model is 78% and the accuracy rate for days to deceased for each timepoints is &gt;72%.</p>
+<div id="overall-random-forest-prediction-model" class="section level2 tabset">
+<h2 class="tabset">Overall Random Forest Prediction Model</h2>
+<div id="performance" class="section level3">
+<h3>Performance</h3>
+<pre><code>## Model for learner.id=classif.randomForest; learner.class=classif.randomForest
+## Trained on: task.id = train; obs = 21532; features = 31
+## Hyperparameters:</code></pre>
+<pre><code>## NULL</code></pre>
+<pre><code>##       acc 
+## 0.7926807</code></pre>
+</div>
+<div id="model-variable-importance" class="section level3">
+<h3>Model/ Variable Importance</h3>
+<pre><code>## 
+## Call:
+##  randomForest(formula = deceased ~ ., data = train, ntree = 500,      mtry = 5, importance = TRUE) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 5
+## 
+##         OOB estimate of  error rate: 20.52%
+## Confusion matrix:
+##       0    1 class.error
+## 0 11426 2126   0.1568772
+## 1  2293 5687   0.2873434</code></pre>
+<pre><code>##          
+## predTrain     0     1
+##         0 13552     0
+##         1     0  7980</code></pre>
+<p><img src="index_files/figure-html/random%20forest%20plot2-1.png" width="672" /></p>
+</div>
+</div>
+<div id="random-forest-prediction-model-by-time-to-deceased-timepoints" class="section level2 tabset">
+<h2 class="tabset">Random Forest Prediction Model by Time to Deceased Timepoints</h2>
+<div id="days" class="section level3 tabset">
+<h3 class="tabset">1: &lt;30days</h3>
+<pre><code>## Model for learner.id=classif.randomForest; learner.class=classif.randomForest
+## Trained on: task.id = train30; obs = 21532; features = 31
+## Hyperparameters:</code></pre>
+<pre><code>## NULL</code></pre>
+<pre><code>##       acc 
+## 0.7782835</code></pre>
+<pre><code>## 
+## Call:
+##  randomForest(formula = deceased30days ~ ., data = train30, ntree = 500,      mtry = 5, importance = TRUE) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 5
+## 
+##         OOB estimate of  error rate: 22.27%
+## Confusion matrix:
+##            No Deceased Alive class.error
+## No       3909        0  2654   0.4043882
+## Deceased  220        0   108   1.0000000
+## Alive    1814        0 12827   0.1238986</code></pre>
+<pre><code>##           
+## predTrain     No Deceased Alive
+##   No        6563        0     0
+##   Deceased     0      328     0
+##   Alive        0        0 14641</code></pre>
+<p><img src="index_files/figure-html/random%20forest%20timepoints%2030%20model-1.png" width="672" /></p>
+</div>
+<div id="days-1" class="section level3 tabset">
+<h3 class="tabset">2: 31-180days</h3>
+<pre><code>## Model for learner.id=classif.randomForest; learner.class=classif.randomForest
+## Trained on: task.id = train180; obs = 21532; features = 31
+## Hyperparameters:</code></pre>
+<pre><code>## NULL</code></pre>
+<pre><code>##       acc 
+## 0.7783764</code></pre>
+<pre><code>## 
+## Call:
+##  randomForest(formula = deceased180days ~ ., data = train180,      ntree = 500, mtry = 5, importance = TRUE) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 5
+## 
+##         OOB estimate of  error rate: 22.51%
+## Confusion matrix:
+##            No Deceased Alive class.error
+## No       3515        0  2675   0.4321486
+## Deceased  376        0   262   1.0000000
+## Alive    1533        0 13171   0.1042573</code></pre>
+<pre><code>##           
+## predTrain     No Deceased Alive
+##   No        6190        0     0
+##   Deceased     0      638     0
+##   Alive        0        0 14704</code></pre>
+<p><img src="index_files/figure-html/random%20forest%20timepoints%20180%20model-1.png" width="672" /></p>
+</div>
+<div id="days-2" class="section level3 tabset">
+<h3 class="tabset">3: 181-365days</h3>
+<pre><code>## Model for learner.id=classif.randomForest; learner.class=classif.randomForest
+## Trained on: task.id = train365; obs = 21532; features = 31
+## Hyperparameters:</code></pre>
+<pre><code>## NULL</code></pre>
+<pre><code>##       acc 
+## 0.7809772</code></pre>
+<pre><code>## 
+## Call:
+##  randomForest(formula = deceased365days ~ ., data = train365,      ntree = 500, mtry = 5, importance = TRUE) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 5
+## 
+##         OOB estimate of  error rate: 22.01%
+## Confusion matrix:
+##            No Deceased Alive class.error
+## No       3883        0  2657   0.4062691
+## Deceased  228        0   150   1.0000000
+## Alive    1704        0 12910   0.1166005</code></pre>
+<pre><code>##           
+## predTrain     No Deceased Alive
+##   No        6540        0     0
+##   Deceased     0      378     0
+##   Alive        0        0 14614</code></pre>
+<p><img src="index_files/figure-html/random%20forest%20timepoints%20365%20model-1.png" width="672" /></p>
+</div>
+<div id="days-3" class="section level3 tabset">
+<h3 class="tabset">4: 366-1825days</h3>
+<pre><code>## Model for learner.id=classif.randomForest; learner.class=classif.randomForest
+## Trained on: task.id = train1825; obs = 21532; features = 31
+## Hyperparameters:</code></pre>
+<pre><code>## NULL</code></pre>
+<pre><code>##       acc 
+## 0.7269181</code></pre>
+<pre><code>## 
+## Call:
+##  randomForest(formula = deceased1825days ~ ., data = train1825,      ntree = 500, mtry = 5, importance = TRUE) 
+##                Type of random forest: classification
+##                      Number of trees: 500
+## No. of variables tried at each split: 5
+## 
+##         OOB estimate of  error rate: 26.79%
+## Confusion matrix:
+##            No Deceased Alive class.error
+## No       2134       37  2545  0.54749788
+## Deceased 1050       25  1084  0.98842057
+## Alive    1045        8 13604  0.07184281</code></pre>
+<pre><code>##           
+## predTrain     No Deceased Alive
+##   No        4716        0     0
+##   Deceased     0     2159     0
+##   Alive        0        0 14657</code></pre>
+<p><img src="index_files/figure-html/random%20forest%20timepoints%201825%20model-1.png" width="672" /></p>
+</div>
+</div>
+</div>
+<div id="spatial" class="section level1">
+<h1>Spatial</h1>
+<div id="spatial-data" class="section level2 tabset">
+<h2 class="tabset">Spatial Data</h2>
+<div id="spatial-plot" class="section level3">
+<h3>Spatial Plot</h3>
+<p><img src="index_files/figure-html/Spatial%20plot-1.png" width="672" /></p>
+</div>
+<div id="list-of-death-count-corrosponing-to-zipcode" class="section level3">
+<h3>List of Death count corrosponing to Zipcode</h3>
+<pre><code>##     facility_zip5_cde deceased   n countSpatial       rate
+## 1               92120        1 398         1095 0.36347032
+## 2               94596        1 320          641 0.49921997
+## 3               93710        1 267          851 0.31374853
+## 4               95825        1 266          585 0.45470085
+## 5               92037        1 261          802 0.32543641
+## 6               93301        1 245          655 0.37404580
+## 7               95661        1 238          658 0.36170213
+## 8               90806        1 236          645 0.36589147
+## 9               91367        1 223          528 0.42234848
+## 10              94611        1 216          518 0.41698842
+## 11              92335        1 209          574 0.36411150
+## 12              92663        1 209          661 0.31618759
+## 13              95051        1 208          611 0.34042553
+## 14              90404        1 202          573 0.35253054
+## 15              93105        1 199          469 0.42430704
+## 16              94115        1 199          589 0.33786078
+## 17              94305        1 196          530 0.36981132
+## 18              92270        1 184          447 0.41163311
+## 19              90027        1 183          471 0.38853503
+## 20              92868        1 173          517 0.33462282
+## 21              91105        1 171          555 0.30810811
+## 22              92025        1 169          408 0.41421569
+## 23              92103        1 161          484 0.33264463
+## 24              93003        1 159          417 0.38129496
+## 25              92653        1 158          358 0.44134078
+## 26              95065        1 158          429 0.36829837
+## 27              94598        1 157          425 0.36941176
+## 28              90710        1 154          357 0.43137255
+## 29              91767        1 153          319 0.47962382
+## 30              94903        1 153          319 0.47962382
+## 31              95819        1 149          434 0.34331797
+## 32              93720        1 148          405 0.36543210
+## 33              95926        1 147          370 0.39729730
+## 34              90505        1 143          455 0.31428571
+## 35              93940        1 139          367 0.37874659
+## 36              90034        1 138          319 0.43260188
+## 37              92056        1 138          283 0.48763251
+## 38              94705        1 137          365 0.37534247
+## 39              94590        1 131          303 0.43234323
+## 40              91402        1 130          313 0.41533546
+## 41              92123        1 130          446 0.29147982
+## 42              95816        1 130          326 0.39877301
+## 43              92373        1 128          384 0.33333333
+## 44              95403        1 128          290 0.44137931
+## 45              90048        1 127          474 0.26793249
+## 46              95355        1 127          400 0.31750000
+## 47              95405        1 122          287 0.42508711
+## 48              91942        1 121          276 0.43840580
+## 49              92505        1 119          339 0.35103245
+## 50              94010        1 119          247 0.48178138
+## 51              96001        1 117          314 0.37261146
+## 52              94063        1 116          307 0.37785016
+## 53              90706        1 115          245 0.46938776
+## 54              95124        1 111          372 0.29838710
+## 55              95119        1 110          356 0.30898876
+## 56              93291        1 107          297 0.36026936
+## 57              95204        1 107          255 0.41960784
+## 58              93401        1 106          251 0.42231076
+## 59              90602        1 101          273 0.36996337
+## 60              90503        1 100          261 0.38314176
+## 61              92807        1 100          271 0.36900369
+## 62              90720        1  98          231 0.42424242
+## 63              91007        1  98          267 0.36704120
+## 64              92691        1  98          346 0.28323699
+## 65              92501        1  97          275 0.35272727
+## 66              95823        1  97          312 0.31089744
+## 67              91706        1  94          271 0.34686347
+## 68              94609        1  94          222 0.42342342
+## 69              92835        1  93          291 0.31958763
+## 70              94040        1  92          268 0.34328358
+## 71              94545        1  91          214 0.42523364
+## 72              90095        1  88          267 0.32958801
+## 73              92354        1  88          258 0.34108527
+## 74              92708        1  87          308 0.28246753
+## 75              94538        1  87          283 0.30742049
+## 76              94904        1  87          210 0.41428571
+## 77              95945        1  87          197 0.44162437
+## 78              95608        1  86          210 0.40952381
+## 79              95350        1  85          203 0.41871921
+## 80              91360        1  79          294 0.26870748
+## 81              92635        1  78          211 0.36966825
+## 82              93534        1  76          212 0.35849057
+## 83              95501        1  75          181 0.41436464
+## 84              95128        1  74          158 0.46835443
+## 85              95817        1  74          255 0.29019608
+## 86              91505        1  73          203 0.35960591
+## 87              91786        1  72          263 0.27376426
+## 88              92024        1  71          216 0.32870370
+## 89              92718        1  71          168 0.42261905
+## 90              94080        1  71          164 0.43292683
+## 91              90033        1  69          210 0.32857143
+## 92              93901        1  68          178 0.38202247
+## 93              92404        1  64          161 0.39751553
+## 94              93030        1  63          138 0.45652174
+## 95              91356        1  61          185 0.32972973
+## 96              92804        1  61          108 0.56481481
+## 97              95380        1  60          135 0.44444444
+## 98              92543        1  58           99 0.58585859
+## 99              92064        1  57          160 0.35625000
+## 100             93465        1  57          128 0.44531250
+## 101             95203        1  57          141 0.40425532
+## 102             91723        1  56           91 0.61538462
+## 103             94062        1  56          159 0.35220126
+## 104             93405        1  55          166 0.33132530
+## 105             93454        1  55          155 0.35483871
+## 106             94122        1  54          189 0.28571429
+## 107             93420        1  53          112 0.47321429
+## 108             93612        1  53          188 0.28191489
+## 109             92262        1  52          177 0.29378531
+## 110             92660        1  52          125 0.41600000
+## 111             91109        1  51          123 0.41463415
+## 112             92677        1  51           97 0.52577320
+## 113             92801        1  50          109 0.45871560
+## 114             94520        1  50          147 0.34013605
+## 115             90301        1  49          117 0.41880342
+## 116             91307        1  49          142 0.34507042
+## 117             94546        1  49           90 0.54444444
+## 118             94558        1  48          128 0.37500000
+## 119             95370        1  48          131 0.36641221
+## 120             91206        1  47          130 0.36153846
+## 121             95901        1  47          100 0.47000000
+## 122             90017        1  46          131 0.35114504
+## 123             95240        1  46          125 0.36800000
+## 124             90732        1  44           81 0.54320988
+## 125             91010        1  44           78 0.56410256
+## 126             93010        1  44          108 0.40740741
+## 127             95336        1  43           97 0.44329897
+## 128             95667        1  43          112 0.38392857
+## 129             95340        1  42          104 0.40384615
+## 130             92118        1  41          145 0.28275862
+## 131             91355        1  40          142 0.28169014
+## 132             91741        1  40          106 0.37735849
+## 133             92307        1  40          126 0.31746032
+## 134             93721        1  40          103 0.38834951
+## 135             92392        1  38           87 0.43678161
+## 136             95695        1  38           86 0.44186047
+## 137             95969        1  38           86 0.44186047
+## 138             90024        1  37           88 0.42045455
+## 139             94117        1  37           94 0.39361702
+## 140             95030        1  36           83 0.43373494
+## 141             95482        1  36           78 0.46153846
+## 142             96080        1  36           72 0.50000000
+## 143             90241        1  35           70 0.50000000
+## 144             91006        1  35           63 0.55555556
+## 145             91776        1  35           66 0.53030303
+## 146             94583        1  35          104 0.33653846
+## 147             95603        1  34           57 0.59649123
+## 148             90813        1  33           55 0.60000000
+## 149             94804        1  33           61 0.54098361
+## 150             95402        1  33           52 0.63461538
+## 151             91208        1  32          114 0.28070175
+## 152             92668        1  32           94 0.34042553
+## 153             92806        1  32          116 0.27586207
+## 154             93230        1  32           93 0.34408602
+## 155             90605        1  31           57 0.54385965
+## 156             91345        1  31          113 0.27433628
+## 157             90712        1  30           70 0.42857143
+## 158             92503        1  30           81 0.37037037
+## 159             92585        1  30           52 0.57692308
+## 160             94042        1  30           51 0.58823529
+## 161             95616        1  29           94 0.30851064
+## 162             90509        1  28           80 0.35000000
+## 163             90804        1  28           69 0.40579710
+## 164             95602        1  28           63 0.44444444
+## 165             91204        1  27           55 0.49090909
+## 166             91328        1  27           75 0.36000000
+## 167             91405        1  27           93 0.29032258
+## 168             92705        1  27           66 0.40909091
+## 169             94143        1  27          120 0.22500000
+## 170             94533        1  27           61 0.44262295
+## 171             94550        1  27           63 0.42857143
+## 172             95076        1  27           60 0.45000000
+## 173             95404        1  27           79 0.34177215
+## 174             95991        1  27           70 0.38571429
+## 175             93308        1  26           55 0.47272727
+## 176             95540        1  26           57 0.45614035
+## 177             95966        1  26           68 0.38235294
+## 178             92220        1  24           45 0.53333333
+## 179             92562        1  24           85 0.28235294
+## 180             93111        1  24           77 0.31168831
+## 181             94578        1  24           34 0.70588235
+## 182             94806        1  24           45 0.53333333
+## 183             95437        1  24           55 0.43636364
+## 184             95521        1  24           50 0.48000000
+## 185             95630        1  24          100 0.24000000
+## 186             92028        1  23           50 0.46000000
+## 187             94954        1  23           34 0.67647059
+## 188             90291        1  22           38 0.57894737
+## 189             91790        1  22           56 0.39285714
+## 190             92673        1  22           45 0.48888889
+## 191             94531        1  22          122 0.18032787
+## 192             95476        1  22           34 0.64705882
+## 193             90231        1  21           42 0.50000000
+## 194             91403        1  21           29 0.72413793
+## 195             91773        1  21           75 0.28000000
+## 196             92343        1  21           28 0.75000000
+## 197             91436        1  20           41 0.48780488
+## 198             92362        1  20           71 0.28169014
+## 199             93257        1  20           50 0.40000000
+## 200             91911        1  19           53 0.35849057
+## 201             92201        1  19           57 0.33333333
+## 202             93274        1  19           33 0.57575758
+## 203             94109        1  19           49 0.38775510
+## 204             95490        1  19           43 0.44186047
+## 205             92670        1  18           62 0.29032258
+## 206             93102        1  18           81 0.22222222
+## 207             94501        1  18           37 0.48648649
+## 208             95642        1  18           49 0.36734694
+## 209             92647        1  17           51 0.33333333
+## 210             93023        1  17           31 0.54838710
+## 211             95020        1  17           34 0.50000000
+## 212             96067        1  17           32 0.53125000
+## 213             92243        1  16           45 0.35555556
+## 214             93065        1  16           62 0.25806452
+## 215             94588        1  16           62 0.25806452
+## 216             90057        1  15           44 0.34090909
+## 217             92227        1  15           39 0.38461538
+## 218             92252        1  15           29 0.51724138
+## 219             93103        1  15           23 0.65217391
+## 220             90242        1  14           89 0.15730337
+## 221             93555        1  14           37 0.37837838
+## 222             94015        1  14           46 0.30434783
+## 223             94945        1  14           37 0.37837838
+## 224             95448        1  14           28 0.50000000
+## 225             95453        1  14           29 0.48275862
+## 226             95531        1  14           33 0.42424242
+## 227             92395        1  13           40 0.32500000
+## 228             92882        1  13           39 0.33333333
+## 229             95023        1  13           41 0.31707317
+## 230             95472        1  13           36 0.36111111
+## 231             90640        1  12           27 0.44444444
+## 232             91324        1  12           21 0.57142857
+## 233             91910        1  12           21 0.57142857
+## 234             92728        1  12           30 0.40000000
+## 235             94509        1  12           43 0.27906977
+## 236             95116        1  12           27 0.44444444
+## 237             95361        1  12           25 0.48000000
+## 238             95376        1  12           35 0.34285714
+## 239             96049        1  12           24 0.50000000
+## 240             92263        1  11           23 0.47826087
+## 241             92621        1  11           21 0.52380952
+## 242             93436        1  11           40 0.27500000
+## 243             94574        1  11           51 0.21568627
+## 244             94576        1  11           25 0.44000000
+## 245             95687        1  11           22 0.50000000
+## 246             95688        1  11           59 0.18644068
+## 247             96097        1  11           43 0.25581395
+## 248             96150        1  11           41 0.26829268
+## 249             96160        1  11           49 0.22448980
+## 250             91209        1  10           29 0.34482759
+## 251             92311        1  10           17 0.58823529
+## 252             92555        1  10           45 0.22222222
+## 253             93654        1  10           17 0.58823529
+## 254             93702        1  10           19 0.52631579
+## 255             94553        1  10           24 0.41666667
+## 256             95112        1  10           14 0.71428571
+## 257             95249        1  10           24 0.41666667
+## 258             92010        1   9           13 0.69230769
+## 259             92618        1   9          131 0.06870229
+## 260             93637        1   9           24 0.37500000
+## 261             94589        1   9           43 0.20930233
+## 262             95731        1   9           15 0.60000000
+## 263             91740        1   8            9 0.88888889
+## 264             92643        1   8           14 0.57142857
+## 265             93611        1   8           51 0.15686275
+## 266             94110        1   8           33 0.24242424
+## 267             94602        1   8           12 0.66666667
+## 268             96130        1   8           14 0.57142857
+## 269             90623        1   7           17 0.41176471
+## 270             91754        1   7           14 0.50000000
+## 271             93463        1   7            8 0.87500000
+## 272             93514        1   7           35 0.20000000
+## 273             93662        1   7           10 0.70000000
+## 274             93715        1   7           15 0.46666667
+## 275             95932        1   7           12 0.58333333
+## 276             90015        1   6           10 0.60000000
+## 277             91325        1   6           20 0.30000000
+## 278             91763        1   6           16 0.37500000
+## 279             92314        1   6            8 0.75000000
+## 280             93240        1   6            7 0.85714286
+## 281             95337        1   6           33 0.18181818
+## 282             90650        1   5            9 0.55555556
+## 283             90801        1   5           18 0.27777778
+## 284             91346        1   5           12 0.41666667
+## 285             91710        1   5           27 0.18518519
+## 286             92050        1   5            6 0.83333333
+## 287             92411        1   5           15 0.33333333
+## 288             92592        1   5           23 0.21739130
+## 289             92672        1   5           12 0.41666667
+## 290             93210        1   5            8 0.62500000
+## 291             94025        1   5           23 0.21739130
+## 292             94577        1   5           33 0.15151515
+## 293             95422        1   5           10 0.50000000
+## 294             95971        1   5           14 0.35714286
+## 295             90019        1   4           15 0.26666667
+## 296             90247        1   4            7 0.57142857
+## 297             91107        1   4            7 0.57142857
+## 298             91344        1   4           10 0.40000000
+## 299             91720        1   4           15 0.26666667
+## 300             92225        1   4            6 0.66666667
+## 301             92324        1   4           11 0.36363636
+## 302             92651        1   4           16 0.25000000
+## 303             92669        1   4           21 0.19047619
+## 304             92805        1   4           11 0.36363636
+## 305             93215        1   4            6 0.66666667
+## 306             93551        1   4           21 0.19047619
+## 307             93906        1   4           14 0.28571429
+## 308             94599        1   4            4 1.00000000
+## 309             95382        1   4           11 0.36363636
+## 310             95826        1   4           14 0.28571429
+## 311             96028        1   4           11 0.36363636
+## 312             90012        1   3           16 0.18750000
+## 313             90067        1   3           20 0.15000000
+## 314             90250        1   3            4 0.75000000
+## 315             90292        1   3           15 0.20000000
+## 316             90701        1   3           14 0.21428571
+## 317             91342        1   3            5 0.60000000
+## 318             91801        1   3            6 0.50000000
+## 319             92315        1   3            8 0.37500000
+## 320             92870        1   3           19 0.15789474
+## 321             93060        1   3           13 0.23076923
+## 322             93305        1   3           13 0.23076923
+## 323             93545        1   3            3 1.00000000
+## 324             95032        1   3           12 0.25000000
+## 325             96101        1   3            3 1.00000000
+## 326             90007        1   2           11 0.18181818
+## 327             90036        1   2            9 0.22222222
+## 328             90502        1   2            9 0.22222222
+## 329             90716        1   2            9 0.22222222
+## 330             91335        1   2            3 0.66666667
+## 331             91352        1   2            4 0.50000000
+## 332             91770        1   2            3 0.66666667
+## 333             91950        1   2            5 0.40000000
+## 334             92352        1   2            9 0.22222222
+## 335             92563        1   2           18 0.11111111
+## 336             92704        1   2            6 0.33333333
+## 337             93546        1   2           27 0.07407407
+## 338             93635        1   2           10 0.20000000
+## 339             93930        1   2           10 0.20000000
+## 340             94704        1   2            4 0.50000000
+## 341             94947        1   2            3 0.66666667
+## 342             95841        1   2            8 0.25000000
+## 343             95948        1   2            2 1.00000000
+## 344             96093        1   2            3 0.66666667
+## 345             96161        1   2           19 0.10526316
+## 346             90004        1   1            1 1.00000000
+## 347             90018        1   1            1 1.00000000
+## 348             90022        1   1            1 1.00000000
+## 349             90026        1   1            5 0.20000000
+## 350             90059        1   1            1 1.00000000
+## 351             90255        1   1            2 0.50000000
+## 352             90262        1   1            4 0.25000000
+## 353             90637        1   1            1 1.00000000
+## 354             90704        1   1            1 1.00000000
+## 355             90723        1   1            1 1.00000000
+## 356             91016        1   1            2 0.50000000
+## 357             91361        1   1           25 0.04000000
+## 358             91364        1   1            5 0.20000000
+## 359             91724        1   1            2 0.50000000
+## 360             91764        1   1            1 1.00000000
+## 361             91802        1   1            1 1.00000000
+## 362             92109        1   1            2 0.50000000
+## 363             92110        1   1            2 0.50000000
+## 364             92128        1   1            6 0.16666667
+## 365             92363        1   1            5 0.20000000
+## 366             92506        1   1            9 0.11111111
+## 367             93001        1   1           11 0.09090909
+## 368             93216        1   1            4 0.25000000
+## 369             93306        1   1            4 0.25000000
+## 370             93309        1   1            4 0.25000000
+## 371             93408        1   1            1 1.00000000
+## 372             94114        1   1            5 0.20000000
+## 373             94116        1   1            1 1.00000000
+## 374             94133        1   1            1 1.00000000
+## 375             94403        1   1            1 1.00000000
+## 376             95231        1   1            6 0.16666667
+## 377             95338        1   1            4 0.25000000
+## 378             95542        1   1            1 1.00000000
+## 379             95947        1   1            2 0.50000000
+## 380             95988        1   1            2 0.50000000
+## 381             96020        1   1            4 0.25000000</code></pre>
+</div>
+<div id="spatial-correlation" class="section level3">
+<h3>Spatial Correlation</h3>
+<pre><code>## 
+##  Pearson&#39;s product-moment correlation
+## 
+## data:  workingdata$deceased and workingdata$facility_zip5_cde
+## t = 3.4578, df = 47680, p-value = 0.0005451
+## alternative hypothesis: true correlation is not equal to 0
+## 95 percent confidence interval:
+##  0.006858573 0.024805660
+## sample estimates:
+##        cor 
+## 0.01583339</code></pre>
+</div>
+</div>
+</div>
+<div id="conclusion" class="section level1">
+<h1>Conclusion</h1>
+<p>Based on this analysis, the develop Random Forest prediction model was able to moderately predict short-term risk of death based on prior in-patient hospitalization records from this CTS study. The accuracy for predicting overall mortality risk was 78% and the accuracy for predicting short-term mortality risk was &gt;77%. For participants who passed away within 30days after discharge, the model suggests menopause, smoke exposure, how much the patient smoked in a year and diagnosis category 1 was are predictive factors for risk of mortality after hospitalization. For the models for patients who passed away passed 30days, smoke exposure and menopause, high carb diet are also predictive factors for mortality risk. For the risk for the remaining time to deceased, menopause and smoke exposure remained as predictive factors with accuracy random forest prediction rate of &gt;72%</p>
+<p>In assessing whether time window after hospitalization plays a role in predicting risk of death. The group that had the highest death rate was patients that were discharged from the hospital between 1 to 5 years. This is a long stretch of time and many factor can contribute including variables unrelated to the study.</p>
+<p>To identify whether certain co-morbidities contributes to predicting the risk of death, the CCS variables were evaluated. Among the 5 ccs codes, essential hypertension, cardiac dysrhthmias, disorders of lipid metabolism and osteoarthritis are among the highest diagnoses within patients that have died. Based on the Pearson’s correlation analysis, there is a small association between diagnosis based on theses ccs code and death. The major diagnosis category is a moderate predictive factor for short-term mortality risks based on the Random Forest prediction model. The top 3 diagnosis among the deceased are Other infections; including parasitic, HIV infection and Hepatitis.</p>
+<p>To determine whether there are any spatial (zip code) correlation with hospitalization-related deaths the number of deceased were counted per zipcode. Based on Pearson’s correlation, there is minimal correlation between zipcode mortality rate, however you do see higher number of deaths in more populated areas.</p>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
